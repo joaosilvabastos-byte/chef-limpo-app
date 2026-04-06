@@ -1,0 +1,4 @@
+// Ficheiro gerado automaticamente pelo Capacitor
+dependencies {
+    implementation project(':capacitor-android')
+}

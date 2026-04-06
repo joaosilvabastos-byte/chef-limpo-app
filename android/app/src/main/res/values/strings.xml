@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CHEF NOVO 2.0</string>
+    <string name="title_activity_main">CHEF NOVO 2.0</string>
+    <string name="package_name">com.chefpro.app.nova</string>
+    <string name="custom_url_scheme">com.chefpro.app.nova</string>
+</resources>

@@ -1,0 +1,7 @@
+{
+  "name": "chef-pro",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "custom"
+}

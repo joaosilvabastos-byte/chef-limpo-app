@@ -15,16 +15,18 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: '17'
+          cache: 'gradle' # O agente do GitHub usa isto para não dar erro de download
 
       - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: 'npm'
 
       - name: Install Dependencies
         run: |
           npm install --legacy-peer-deps
-          npm install @capacitor/core @capacitor/cli @capacitor/android --save-dev
+          npm install @capacitor/core @capacitor/cli @capacitor/android
 
       - name: Vite Build
         run: npm run build
@@ -35,13 +37,6 @@ jobs:
       - name: Build APK
         working-directory: android
         run: |
+          # O comando 'clean' ajuda o agente do GitHub a não usar lixo de builds anteriores
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
-        env:
-          JAVA_HOME: ${{ env.JAVA_HOME_17_X64 }}
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          ./gradlew clean assembleDebug --no-daemon 

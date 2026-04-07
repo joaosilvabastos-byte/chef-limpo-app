@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "ionic:build": "npm run build",
-    "ionic:cap:copy": "npx cap copy android"
+    "ionic:cap:sync": "echo Skipping sync...",
+    "ionic:cap:copy": "echo Skipping copy..."
   },
   "dependencies": {
     "@capacitor/android": "^8.3.0",

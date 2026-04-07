@@ -1,3 +1,17 @@
+// 1. ESTE BLOCO TEM DE SER O PRIMEIRO DE TUDO
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        // Esta é a "chave" que estava a faltar para o erro 'Plugin not found'
+        classpath 'com.android.tools.build:gradle:8.2.1'
+        classpath 'com.google.gms:google-services:4.4.0'
+    }
+}
+
+// 2. AGORA SIM, APLICAS O PLUGIN
 apply plugin: 'com.android.application'
 
 android {
@@ -22,8 +36,11 @@ android {
     }
 }
 
+// Repositórios para as dependências do projeto
 repositories {
-    flatDir{
+    google()
+    mavenCentral()
+    flatDir {
         dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
     }
 }
@@ -44,7 +61,7 @@ apply from: 'capacitor.build.gradle'
 
 try {
     def servicesJSON = file('google-services.json')
-    if (servicesJSON.text) {
+    if (servicesJSON.exists()) {
         apply plugin: 'com.google.gms.google-services'
     }
 } catch(Exception e) {

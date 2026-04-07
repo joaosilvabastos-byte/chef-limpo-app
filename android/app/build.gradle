@@ -1,17 +1,15 @@
-// 1. ESTE BLOCO TEM DE SER O PRIMEIRO DE TUDO
 buildscript {
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        // Esta é a "chave" que estava a faltar para o erro 'Plugin not found'
+        // Motor de build - Deixar em 8.2.1
         classpath 'com.android.tools.build:gradle:8.2.1'
         classpath 'com.google.gms:google-services:4.4.0'
     }
 }
 
-// 2. AGORA SIM, APLICAS O PLUGIN
 apply plugin: 'com.android.application'
 
 android {
@@ -36,7 +34,6 @@ android {
     }
 }
 
-// Repositórios para as dependências do projeto
 repositories {
     google()
     mavenCentral()
@@ -47,13 +44,16 @@ repositories {
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
-    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
-    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    
+    // VERSÕES FIXAS (Para matar o erro 'unknown property')
+    implementation "androidx.appcompat:appcompat:1.6.1"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:1.2.0"
+    implementation "androidx.core:core-splashscreen:1.0.1"
+    
     implementation project(':capacitor-android')
-    testImplementation "junit:junit:$junitVersion"
-    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
-    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    testImplementation "junit:junit:4.13.2"
+    androidTestImplementation "androidx.test.ext:junit:1.1.5"
+    androidTestImplementation "androidx.test.espresso:espresso-core:3.5.1"
     implementation project(':capacitor-cordova-android-plugins')
 }
 

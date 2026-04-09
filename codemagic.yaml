@@ -15,13 +15,26 @@ workflows:
         script: npx cap sync android
       - name: Build Android APK
         script: |
+          # 1. Forçar variáveis de ambiente para Java 21
+          export JAVA_HOME=$JAVA_HOME_21
+          export PATH=$JAVA_HOME/bin:$PATH
+          
+          # 2. Confirmar versão no log (para sabermos o que o Codemagic está a fazer)
+          java -version
+          
           cd android
-          # Limpeza profunda para apagar os ficheiros Java "versão 65" mal processados
+          
+          # 3. Limpeza agressiva
+          chmod +x gradlew
+          ./gradlew --stop
           rm -rf ~/.gradle/caches
           rm -rf .gradle
-          chmod +x gradlew
-          # Usar o wrapper para garantir a versão 8.2.1
-          ./gradlew assembleDebug --no-build-cache --stacktrace
+          
+          # 4. Build forçando o motor Java 21 no Gradle
+          ./gradlew assembleDebug \
+            -Dorg.gradle.java.home=$JAVA_HOME \
+            --no-build-cache \
+            --stacktrace
     artifacts:
       - android/app/build/outputs/apk/debug/*.apk
     publishing:

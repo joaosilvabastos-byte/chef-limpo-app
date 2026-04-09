@@ -347,16 +347,13 @@ function calcRecipe(
   // Esta é a meta de lucro baseada na margem que definiste.
   const targetProfit = totalCost * (marginRate / Math.max(1 - marginRate, 0.01));
 
-  // ── 2. OBJETIVO (A META DE VENDA) ───────────────────
-// Calculamos sempre o valor atual com base nos teus inputs (Custo + Lucro)
-const objetivoCalculado = totalCost + targetProfit;
+ 
+// ── 2. OBJETIVO (A META DE VENDA) ───────────────────
+  const objetivoCalculado = totalCost + targetProfit;
+  let objetivo = (isSaved && storedObjetivo > 0.1) ? storedObjetivo : objetivoCalculado;
 
-// Se o cálculo der um valor válido, usamos esse (para ser reativo). 
-// Se não (ex: receita vazia), usamos o que estava guardado.
-let objetivo = (objetivoCalculado > 0.01) ? objetivoCalculado : (storedObjetivo || 0);
-
-// ── 3. DOSES E FATURAÇÃO ────────────────────────────
-const doses = sellPrice > 0.01 ? objetivo / sellPrice : 0;
+  // ── 3. DOSES E FATURAÇÃO ────────────────────────────
+  const doses = sellPrice > 0.01 ? objetivo / sellPrice : 0;
   
   // Faturação Real: só ganhas dinheiro pelo que NÃO é quebra
   const dosesVendidas = doses * (1 - lossRate);
@@ -366,22 +363,22 @@ const doses = sellPrice > 0.01 ? objetivo / sellPrice : 0;
   const effectiveDelivery = Math.min(deliveryCount, dosesVendidas);
   const uberCommission = effectiveDelivery * sellPrice * uberRate;
 
-  // ── 4. LUCRO REAL (O VALOR DO CARTÃO E DO RANKING) ──
-  // Se o preço for 0, mostramos o targetProfit (positivo) para não assustar.
-  // Se houver preço, calculamos o lucro real da operação.
-  const lucroReal = sellPrice > 0.01 
+  // ── 4. LUCRO REAL (A DIFERENÇA DIRETA) ────────────────
+  // Se houver Faturação (venda simulada), usa a conta completa.
+  // Se não, mostra a diferença direta entre o Objetivo e o Custo Total.
+  const lucroReal = (faturacaoReal > 0) 
     ? (faturacaoReal - totalCost - uberCommission) 
-    : targetProfit;
+    : (objetivo - totalCost);
 
   // ── 5. INDICADORES FINAIS ───────────────────────────
-  const nominalProfit = doses > 0 ? lucroReal / doses : 0;
-  const roi = totalCost > 0 ? (lucroReal / totalCost) * 100 : 0;
+  const nominalProfit = doses > 0.01 ? lucroReal / doses : 0;
+  const roi = (totalCost > 0 && lucroReal !== 0) ? (lucroReal / totalCost) * 100 : 0;
   const uberPrice = uberRate > 0 ? sellPrice / (1 - uberRate) : sellPrice;
-
   return {
     totalCost,
     objetivo,
     lucroReal,
+    faturacao: faturacaoReal > 0 ? faturacaoReal : objetivo,
     doses,
     effectiveDelivery,
     ivaIngredientes,
@@ -393,7 +390,7 @@ const doses = sellPrice > 0.01 ? objetivo / sellPrice : 0;
     roi,
     fryerCostTotal: typeof fryerCost !== 'undefined' ? fryerCost : 0,
     energyCostTotal: typeof energyCostVal !== 'undefined' ? energyCostVal : 0
-  };
+  } as any;
 }
 
 

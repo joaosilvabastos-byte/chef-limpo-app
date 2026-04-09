@@ -1,9 +1,11 @@
 workflows:
   android-workflow:
-    name: Android Build
+    name: Android Build 21
     max_build_duration: 60
     instance_type: linux
     environment:
+      groups:
+        - nexus_credentials # Se usares, senão podes apagar esta linha e a de cima
       node: v22.12.0
       java: 21
     scripts:
@@ -16,16 +18,9 @@ workflows:
       - name: Build Android APK
         script: |
           cd android
-          
-          # 1. Limpeza total de segurança
           chmod +x gradlew
-          ./gradlew --stop
-          rm -rf ~/.gradle/caches
-          rm -rf .gradle
-          
-          # 2. Build Simples. O Gradle por padrão usa o Java que está no PATH.
-          # Se o 'java: 21' ali em cima estiver correto, ele vai ler.
-          ./gradlew assembleDebug --no-build-cache --stacktrace
+          # O segredo: Não usar caches antigos de builds que falharam com Java 17
+          ./gradlew assembleDebug --no-daemon --no-build-cache --stacktrace
     artifacts:
       - android/app/build/outputs/apk/debug/*.apk
     publishing:

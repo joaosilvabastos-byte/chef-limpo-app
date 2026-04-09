@@ -71,3 +71,9 @@ try {
 } catch(Exception e) {
     logger.info("google-services.json not found")
 }
+configurations.all {
+    resolutionStrategy {
+        // Força a versão 1.78.1 que não exige Java 21
+        force 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+    }
+}

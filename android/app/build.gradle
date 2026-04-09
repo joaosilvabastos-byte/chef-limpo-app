@@ -4,8 +4,8 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        // Motor de build - Deixar em 8.2.1
-        classpath 'com.android.tools.build:gradle:8.13.0'
+        // Versão estável do plugin Android
+        classpath 'com.android.tools.build:gradle:8.2.1' 
         classpath 'com.google.gms:google-services:4.4.0'
     }
 }
@@ -14,18 +14,23 @@ apply plugin: 'com.android.application'
 
 android {
     namespace "com.chefpro.app.nova"
-    compileSdk 36
+    compileSdk 34  // Estabiliza no Android 14 por agora
+    
     defaultConfig {
         applicationId "com.chefpro.app.nova"
         minSdkVersion 24
-        targetSdkVersion 36
+        targetSdkVersion 34
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        aaptOptions {
-             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
-        }
     }
+
+    // FORÇAR JAVA 17 (O Codemagic prefere isto ao 21)
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
     buildTypes {
         release {
             minifyEnabled false
@@ -45,8 +50,7 @@ repositories {
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     
-    // VERSÕES ATUALIZADAS (Obrigatório para SDK 36)
-    implementation "androidx.appcompat:appcompat:1.7.0"
+    implementation "androidx.appcompat:appcompat:1.6.1"
     implementation "androidx.coordinatorlayout:coordinatorlayout:1.2.0"
     implementation "androidx.core:core-splashscreen:1.0.1"
     

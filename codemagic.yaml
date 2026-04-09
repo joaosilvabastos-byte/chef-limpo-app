@@ -16,10 +16,11 @@ workflows:
       - name: Build Android APK
         script: |
           cd android
-          # Remove cache antigo para evitar conflitos de versão
+          # Limpeza profunda para apagar os ficheiros Java "versão 65" mal processados
+          rm -rf ~/.gradle/caches
           rm -rf .gradle
           chmod +x gradlew
-          # O segredo é usar o gradlew (wrapper) que já aponta para a 8.2.1
+          # Usar o wrapper para garantir a versão 8.2.1
           ./gradlew assembleDebug --no-build-cache --stacktrace
     artifacts:
       - android/app/build/outputs/apk/debug/*.apk

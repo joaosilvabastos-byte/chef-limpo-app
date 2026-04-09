@@ -5,6 +5,7 @@ workflows:
     instance_type: linux
     environment:
       node: v22.12.0
+      java: 17        # ADICIONA ISTO: Essencial para Gradle 8.13 e SDK 36
     scripts:
       - name: Install dependencies
         script: npm install
@@ -15,8 +16,9 @@ workflows:
       - name: Build Android APK
         script: |
           cd android
+          rm -rf .gradle                       # Limpeza profunda de cache
           chmod +x gradlew
-          ./gradlew clean assembleDebug --refresh-dependencies
+          ./gradlew clean assembleDebug --refresh-dependencies --stacktrace
     artifacts:
       - android/app/build/outputs/apk/debug/*.apk
     publishing:

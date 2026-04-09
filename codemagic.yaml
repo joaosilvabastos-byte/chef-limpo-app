@@ -5,7 +5,7 @@ workflows:
     instance_type: linux
     environment:
       node: v22.12.0
-      java: 17        # ADICIONA ISTO: Essencial para Gradle 8.13 e SDK 36
+      java: 17
     scripts:
       - name: Install dependencies
         script: npm install
@@ -16,9 +16,11 @@ workflows:
       - name: Build Android APK
         script: |
           cd android
-          rm -rf .gradle                       # Limpeza profunda de cache
+          # Remove cache antigo para evitar conflitos de versão
+          rm -rf .gradle
           chmod +x gradlew
-          ./gradlew clean assembleDebug --refresh-dependencies --stacktrace
+          # O segredo é usar o gradlew (wrapper) que já aponta para a 8.2.1
+          ./gradlew assembleDebug --no-build-cache --stacktrace
     artifacts:
       - android/app/build/outputs/apk/debug/*.apk
     publishing:

@@ -7,7 +7,7 @@ workflows:
       groups:
         - nexus_credentials # Se usares, senão podes apagar esta linha e a de cima
       node: v22.12.0
-      java: 21
+      java: 17
     scripts:
       - name: Install dependencies
         script: npm install

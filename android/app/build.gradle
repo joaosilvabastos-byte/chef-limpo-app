@@ -45,8 +45,8 @@ repositories {
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     
-    // VERSÕES FIXAS (Para matar o erro 'unknown property')
-    implementation "androidx.appcompat:appcompat:1.6.1"
+    // VERSÕES ATUALIZADAS (Compatíveis com SDK 36)
+    implementation "androidx.appcompat:appcompat:1.7.0"
     implementation "androidx.coordinatorlayout:coordinatorlayout:1.2.0"
     implementation "androidx.core:core-splashscreen:1.0.1"
     

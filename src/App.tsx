@@ -394,39 +394,28 @@ function calcRecipe(
 }
 
 
-// ── Semaphore logic ────────────────────────────────────────────────────────
-// GREEN  : lucroReal >= lucroObjetivo (target met)
-// ORANGE : lucroReal between 90% and 100% of target (within 10% tolerance)
-// RED    : lucroReal < 90% of target OR lucroReal < 0 (impossible to sustain)
 function computeSemaphore(activeRecipes: SavedRecipe[]): SemaphoreState {
   if (activeRecipes.length === 0) return "idle";
+  
   let worst: SemaphoreState = "green";
 
   for (const r of activeRecipes) {
     if (!r.sellPrice || r.sellPrice <= 0) continue;
     
-    // Se o lucro for negativo, é Vermelho imediato.
+    // 1. REGRA DO VERMELHO: Se o lucro for menor que zero (Prejuízo)
     if (r.profit < 0) return "red"; 
 
-    const marginRate = Math.min((r.margin || 0) / 100, 0.99);
-    
-    // O lucro que DEVERIAS ter com base no custo atual e na margem definida
-    // Usamos o r.objetivo bloqueado para a comparação ser real
+    // 2. REGRA DO LARANJA: Se o lucro for positivo mas menor que o objetivo (r.objetivo - r.totalCost)
     const lucroAlvo = r.objetivo ? (r.objetivo - r.totalCost) : 0;
-
-    if (r.objetivo && r.objetivo > 0) {
-      // 1. Se o lucro real caiu abaixo do alvo original por causa do armazém
-      if (r.profit < (lucroAlvo - 0.01)) { 
-        // Se a quebra for maior que 10% do lucro esperado -> Vermelho
-        if (r.profit < lucroAlvo * 0.9) return "red";
-        // Se a quebra for pequena -> Laranja
-        if (worst === "green") worst = "orange";
-      }
+    
+    if (r.profit < (lucroAlvo - 0.01)) { 
+      // Se houver qualquer perda em relação ao objetivo, mas ainda for positivo, fica Laranja
+      if (worst === "green") worst = "orange";
     }
   }
+  
   return worst;
 }
-
 // ── Vigilante: re-price ingredients from current warehouse ─────────────────
 function recomputeIngredientCostFromWarehouse(ingredients: Ingredient[], warehouse: WarehouseItem[]): number {
   let total = 0;

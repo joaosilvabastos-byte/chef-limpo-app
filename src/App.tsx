@@ -700,7 +700,7 @@ const totalCost = activeRecipes.reduce((a, r) => a + (r.totalCost || 0), 0);
       {/* LOGO GRANDE DO AMIGO */}
       <div className="dash-logo-wrap" style={{ textAlign: 'center', marginBottom: '25px' }}>
         <img 
-          src="/LOGO.png" 
+          src="./LOGO.png" 
           alt="Chef Margin Pro" 
           style={{ 
             width: '750px', 

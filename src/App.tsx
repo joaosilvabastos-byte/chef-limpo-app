@@ -348,18 +348,16 @@ function calcRecipe(
   const targetProfit = totalCost * (marginRate / Math.max(1 - marginRate, 0.01));
 
  
-//// ── 2. OBJETIVO (A META DE VENDA REATIVA) ───────────────────
-  // Calculamos o objetivo ideal com base na margem atual
+// ── 2. OBJETIVO (BLINDADO CONTRA O ARMAZÉM) ───────────────────
   const objetivoPelaMargem = totalCost / (1 - (margin / 100));
 
-  // Se a receita está guardada, mantemos o objetivo antigo (para o armazém não o mexer).
-  // Se a diferença for grande (mudaste a margem), ele assume o novo valor.
-  const objetivo = (isSaved && Math.abs(storedObjetivo - objetivoPelaMargem) < 0.5) 
+  // A MUDANÇA: Se estiver gravado, o objetivo é SAGRADO. 
+  // Só muda se tu alterares a MARGEM no ecrã (com uma tolerância pequena).
+  const objetivo = (isSaved && storedObjetivo > 0.1) 
     ? storedObjetivo 
     : objetivoPelaMargem;
 
-  // ── 3. LUCRO REAL (A DIFERENÇA DIRETA) ──────────────────────
-  // Definimos o lucroReal aqui e ele será usado em todo o programa.
+  // ── 3. LUCRO REAL (O ELÁSTICO) ──────────────────────
   const lucroReal = objetivo - totalCost;
 
   // ── 4. DOSES E FATURAÇÃO ────────────────────────────────────

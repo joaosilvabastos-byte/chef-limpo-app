@@ -348,13 +348,23 @@ function calcRecipe(
   const targetProfit = totalCost * (marginRate / Math.max(1 - marginRate, 0.01));
 
  
-// ── 2. OBJETIVO (A META DE VENDA) ───────────────────
-  const objetivoCalculado = totalCost + targetProfit;
-  let objetivo = (isSaved && storedObjetivo > 0.1) ? storedObjetivo : objetivoCalculado;
+//// ── 2. OBJETIVO (A META DE VENDA REATIVA) ───────────────────
+  // Calculamos o objetivo ideal com base na margem atual
+  const objetivoPelaMargem = totalCost / (1 - (margin / 100));
 
-  // ── 3. DOSES E FATURAÇÃO ────────────────────────────
+  // Se a receita está guardada, mantemos o objetivo antigo (para o armazém não o mexer).
+  // Se a diferença for grande (mudaste a margem), ele assume o novo valor.
+  const objetivo = (isSaved && Math.abs(storedObjetivo - objetivoPelaMargem) < 0.5) 
+    ? storedObjetivo 
+    : objetivoPelaMargem;
+
+  // ── 3. LUCRO REAL (A DIFERENÇA DIRETA) ──────────────────────
+  // Definimos o lucroReal aqui e ele será usado em todo o programa.
+  const lucroReal = objetivo - totalCost;
+
+  // ── 4. DOSES E FATURAÇÃO ────────────────────────────────────
   const doses = sellPrice > 0.01 ? objetivo / sellPrice : 0;
-  
+
   // Faturação Real: só ganhas dinheiro pelo que NÃO é quebra
   const dosesVendidas = doses * (1 - lossRate);
   const faturacaoReal = dosesVendidas * sellPrice;
@@ -363,12 +373,7 @@ function calcRecipe(
   const effectiveDelivery = Math.min(deliveryCount, dosesVendidas);
   const uberCommission = effectiveDelivery * sellPrice * uberRate;
 
-  // ── 4. LUCRO REAL (A DIFERENÇA DIRETA) ────────────────
-  // Se houver Faturação (venda simulada), usa a conta completa.
-  // Se não, mostra a diferença direta entre o Objetivo e o Custo Total.
-  const lucroReal = (faturacaoReal > 0) 
-    ? (faturacaoReal - totalCost - uberCommission) 
-    : (objetivo - totalCost);
+  // O lucroReal já foi definido acima, não precisamos de o redeclarar aqui.
 
   // ── 5. INDICADORES FINAIS ───────────────────────────
   const nominalProfit = doses > 0.01 ? lucroReal / doses : 0;
@@ -435,26 +440,28 @@ function computeCostAlerts(activeRecipes: SavedRecipe[], _warehouse: WarehouseIt
   
   for (const r of activeRecipes) {
     if (acknowledgedKeys.has(r.key)) continue;
+    
+    // 1. Só nos importamos com receitas que têm ingredientes e um objetivo definido
     if (!r.ingredients?.length || !r.objetivo) continue;
 
-    const marginRate = Math.min((r.margin || 0) / 100, 0.99);
-    // Custo original que tínhamos quando gravámos a receita
-    const originalTotalCost = r.objetivo * (1 - marginRate);
-    // Custo atualizado (o que o armazém diz agora)
-    const currentTotalCost = r.totalCost; 
+    // 2. O lucro real que o dashboard está a calcular agora
+    const lucroAtual = r.profit; 
 
-    // 🟢 A MUDANÇA ESTÁ AQUI:
-    // Só dispara alerta se:
-    // 1. O custo subiu mais de 2% (currentTotalCost > originalTotalCost * 1.02)
-    // 2. E SE o lucro atual for negativo (currentTotalCost > r.sellPrice)
-    const isLosingMoney = currentTotalCost > (r.sellPrice || 0);
+    // 🟢 A REGRA DE OURO DO CHEF:
+    // Só dispara alerta se o lucro for negativo (estás a perder dinheiro)
+    // ou se o lucro caiu drasticamente abaixo de zero.
+    const isLosingMoney = lucroAtual < 0;
 
-    if (originalTotalCost > 0 && currentTotalCost > originalTotalCost * 1.02 && isLosingMoney) {
+    if (isLosingMoney) {
+      // Como não queremos ser "chato", usamos um custo base para comparação
+      const marginRate = Math.min((r.margin || 0) / 100, 0.99);
+      const originalTotalCost = r.objetivo * (1 - marginRate);
+
       alerts.push({ 
         recipeKey: r.key, 
         recipeName: r.name, 
         oldCost: originalTotalCost, 
-        newCost: currentTotalCost 
+        newCost: r.totalCost 
       });
     }
   }

@@ -274,9 +274,14 @@ function calcRecipe(
   deliveryRate: number, 
   deliveryCount: number, 
   fryerCost: number, 
-  energyCostVal: number
+  energyCostVal: number,
+  isSaved: boolean,
+  storedObjetivo: number,
+  ivaIngredientesParam: number,
+  ivaFryerParam: number,
+  ivaEnergyParam: number
 ) {
-  // 1. CUSTO LÍQUIDO PURO (Sem IVA aqui para não arredondar errado)
+  // 1. CUSTO LÍQUIDO
   const totalLiquido = (ingredients || []).reduce((sum, ing) => {
     const p = Number(ing.price) || 0;
     const q = Number(ing.qty) || 0;
@@ -284,39 +289,42 @@ function calcRecipe(
     return sum + (q * unitP);
   }, 0);
 
-  // 2. OUTROS CUSTOS
   const outros = (Number(fryerCost) || 0) + (Number(energyCostVal) || 0) + (Number(extras) || 0);
   const subTotal = totalLiquido + outros;
 
-  // 3. IVA DOS INGREDIENTES (Calculado sobre o total para evitar os 2 cêntimos de erro)
-  // Assumindo 23% fixo se quiseres, ou vindo do primeiro ingrediente
+  // 2. IVA (10€ + 23%)
   const taxaIva = (Number(ingredients?.[0]?.iva) || 23) / 100;
   const valorIva = subTotal * taxaIva;
-
-  // CUSTO REAL FINAL (Ex: 10€ + 2.30€ = 12.30€)
   const totalCost = subTotal + valorIva;
 
-  // 4. MARGEM (Removida a trava do isSaved para a margem funcionar SEMPRE)
+  // 3. OBJETIVO (Sem travas, para a margem funcionar)
   const marginRate = Math.min((Number(margin) || 0) / 100, 0.99);
   const objetivo = totalCost / Math.max(1 - marginRate, 0.01);
 
-  // 5. LUCRO E QUEBRA
+  // 4. LUCRO E DOSES
   const dosesTotais = Number(sellPrice) > 0.01 ? objetivo / Number(sellPrice) : 0;
   const faturacaoReal = dosesTotais > 0 
     ? (dosesTotais * (1 - (Number(loss) / 100))) * Number(sellPrice) 
     : objetivo;
-
   const lucroReal = faturacaoReal - totalCost;
 
+  // 5. O RETORNO "BLINDADO" (Nomes exatos para o Dashboard não crashar)
   return {
-    totalCost: Number(totalCost.toFixed(2)),
-    objetivo: Number(objetivo.toFixed(2)),
-    lucroReal: Number(lucroReal.toFixed(2)),
-    faturacao: Number(faturacaoReal.toFixed(2)),
-    doses: Number(dosesTotais.toFixed(2)),
-    ivaIngredientes: Number(valorIva.toFixed(2)),
+    totalCost: Number(totalCost.toFixed(2)) || 0,
+    objetivo: Number(objetivo.toFixed(2)) || 0,
+    lucroReal: Number(lucroReal.toFixed(2)) || 0,
+    faturacao: Number(faturacaoReal.toFixed(2)) || 0,
+    doses: Number(dosesTotais.toFixed(2)) || 0,
+    ivaIngredientes: Number(valorIva.toFixed(2)) || 0,
+    ivaFryer: Number(ivaFryerParam) || 0,
+    ivaEnergy: Number(ivaEnergyParam) || 0,
+    nominalProfit: dosesTotais > 0 ? lucroReal / dosesTotais : 0,
     roi: totalCost > 0 ? (lucroReal / totalCost) * 100 : 0,
-    targetProfit: objetivo - totalCost
+    uberPrice: Number(sellPrice) / (1 - (Number(deliveryRate) / 100 || 0)),
+    targetProfit: objetivo - totalCost,
+    fryerCostTotal: Number(fryerCost) || 0,
+    energyCostTotal: Number(energyCostVal) || 0,
+    effectiveDelivery: Number(deliveryCount) || 0
   };
 }
 

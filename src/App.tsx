@@ -349,21 +349,24 @@ function calcRecipe(
 
  
 // ── 2. OBJETIVO (O EQUILÍBRIO PERFEITO) ───────────────────
-  // Calculamos quanto seria o objetivo ideal com a margem atual
-  const objetivoPelaMargem = totalCost / (1 - (margin / 100));
-
-  // LÓGICA: Se a receita está guardada, usamos o objetivo guardado...
-  // MAS ajustamos pela proporção da margem que estás a digitar!
-  // Se a margem no ecrã for 40 e a gravada for 20, o objetivo sobe.
-  // Se mudares o Armazém, o custo muda mas a margem no ecrã (40) não, logo o objetivo fica FIXO.
-  const marginOriginal = (storedMargin || 20) / 100;
-  const currentMargin = margin / 100;
+  // 1. Definimos a margem atual (do ecrã) e a original (da receita)
+  const currentMargin = margin;
+  // Se não existir margem guardada, assumimos a atual para não dar erro
+  const marginOriginal = (typeof (isSaved as any) !== 'undefined' && (isSaved as any).margin) 
+    ? (isSaved as any).margin 
+    : currentMargin;
   
+  // 2. Calculamos o objetivo ideal baseado no custo e margem atuais
+  const objetivoPelaMargem = totalCost / (1 - (currentMargin / 100));
+
+  // 3. Lógica Blindada: 
+  // Se mudares o Armazém: marginOriginal e currentMargin são iguais -> Objetivo não mexe.
+  // Se mudares a Margem: currentMargin muda -> Objetivo reage na hora.
   const objetivo = (isSaved && storedObjetivo > 0.1)
-    ? (storedObjetivo * ( (1 - marginOriginal) / (1 - currentMargin) ))
+    ? (storedObjetivo * ( (1 - (marginOriginal / 100)) / (1 - (currentMargin / 100)) ))
     : objetivoPelaMargem;
 
-  // ── 3. LUCRO REAL (A DIFERENÇA DIRETA) ──────────────────────
+  // ── 3. LUCRO REAL (O ELÁSTICO) ──────────────────────
   const lucroReal = objetivo - totalCost;
 
   // ── 4. DOSES E FATURAÇÃO ────────────────────────────────────

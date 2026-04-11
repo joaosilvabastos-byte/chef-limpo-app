@@ -335,7 +335,7 @@ function calcRecipe(
   }
 
   // ── CUSTO TOTAL ───────────────────────────────────────
- const totalCost = totalBase + (typeof fryerCost !== 'undefined' ? fryerCost : 0) + (typeof energyCostVal !== 'undefined' ? energyCostVal : 0) + (extras || 0);
+  const totalCost = totalBase + (typeof fryerCost !== 'undefined' ? fryerCost : 0) + (typeof energyCostVal !== 'undefined' ? energyCostVal : 0) + (extras || 0);
 
   // ── TAXAS ─────────────────────────────────────────────
   const marginRate = Math.min((margin || 0) / 100, 0.99);
@@ -343,50 +343,48 @@ function calcRecipe(
   const deliveryRateValue = typeof deliveryRate !== 'undefined' ? deliveryRate : 0;
   const uberRate   = Math.min(deliveryRateValue, 0.99);
 
-  // 🔴 1. LUCRO TEÓRICO (Calculado PRIMEIRO para evitar erros)
-  // Esta é a meta de lucro baseada na margem que definiste.
+  // 🔴 1. LUCRO TEÓRICO (Meta baseada na margem)
   const targetProfit = totalCost * (marginRate / Math.max(1 - marginRate, 0.01));
 
- 
-// ── 2. OBJETIVO (INTELIGENTE: REAGE À MARGEM, IGNORA O ARMAZÉM) ──
+  // ── 2. OBJETIVO (INTELIGENTE: REAGE À MARGEM, IGNORA O ARMAZÉM) ──
   const currentMargin = margin;
   const objetivoTeorico = totalCost / (1 - (currentMargin / 100));
 
-  // Se a diferença for < 0.50€, mantemos o valor guardado (mudança no Armazém)
-  // Se for > 0.50€, o objetivo segue a nova margem que escreveste.
+  // TRAVA: Se já estiver salvo, o objetivo só muda se a alteração for > 0.50€ (mudança de margem)
+  // Se mudar o armazém, o custo muda mas o Objetivo fica FIXO.
   const objetivo = (isSaved && Math.abs(storedObjetivo - objetivoTeorico) < 0.5)
     ? storedObjetivo
     : objetivoTeorico;
 
-  // ── 3. LUCRO REAL E ORIGINAL (PARA O SEMÁFORO) ──
-  const lucroReal = objetivo - totalCost;
+  // ── 3. DOSES E FATURAÇÃO (COM QUEBRA REAL) ───────────────────
+  const dosesTotais = sellPrice > 0.01 ? objetivo / sellPrice : 0;
+  
+  // A QUEBRA ATUA AQUI: Só vendes o que sobra!
+  const dosesVendidasEfetivas = dosesTotais * (1 - lossRate);
+  const faturacaoRealCalculada = dosesVendidasEfetivas * sellPrice;
 
-  // Corrigido: Usamos a lógica de comparação para o Dashboard
-  // O lucroOriginal é o ponto de referência para o Laranja aparecer.
+  // ── 4. LUCRO REAL (O QUE VAI PARA O DASHBOARD) ───────────────
+  // Agora o lucroReal sente a quebra e a subida de custos do armazém
+  const lucroReal = faturacaoRealCalculada - totalCost;
+
+  // Ponto de referência para o Semáforo Laranja
   const lucroOriginal = isSaved ? (storedObjetivo - totalCost) : lucroReal;
-  // ── 4. DOSES E FATURAÇÃO ────────────────────────────────────
-  const doses = sellPrice > 0.01 ? objetivo / sellPrice : 0;
-
-  // Faturação Real: só ganhas dinheiro pelo que NÃO é quebra
-  const dosesVendidas = doses * (1 - lossRate);
-  const faturacaoReal = dosesVendidas * sellPrice;
 
   // Uber: Comissão sobre as doses vendidas
-  const effectiveDelivery = Math.min(deliveryCount, dosesVendidas);
+  const effectiveDelivery = Math.min(deliveryCount, dosesVendidasEfetivas);
   const uberCommission = effectiveDelivery * sellPrice * uberRate;
 
-  // O lucroReal já foi definido acima, não precisamos de o redeclarar aqui.
-
   // ── 5. INDICADORES FINAIS ───────────────────────────
-  const nominalProfit = doses > 0.01 ? lucroReal / doses : 0;
+  const nominalProfit = dosesTotais > 0.01 ? lucroReal / dosesTotais : 0;
   const roi = (totalCost > 0 && lucroReal !== 0) ? (lucroReal / totalCost) * 100 : 0;
   const uberPrice = uberRate > 0 ? sellPrice / (1 - uberRate) : sellPrice;
+
   return {
     totalCost,
     objetivo,
     lucroReal,
-    faturacao: faturacaoReal > 0 ? faturacaoReal : objetivo,
-    doses,
+    faturacao: faturacaoRealCalculada,
+    doses: dosesTotais,
     effectiveDelivery,
     ivaIngredientes,
     ivaEnergy: typeof ivaEnergy !== 'undefined' ? ivaEnergy : 0,
@@ -400,44 +398,35 @@ function calcRecipe(
   } as any;
 }
 
-
+// ── SEMÁFORO (DASHBOARD) ────────────────────────────────────
 function computeSemaphore(r: SavedRecipe): "red" | "orange" | "green" {
-  // 1. Vermelho: Se o lucro real for negativo ou zero
-  if ((r.profit || 0) <= 0) return "red";
-
-  // 2. Laranja: Se o lucro atual desceu em relação ao plano original
+  const lucro = r.profit || 0;
   const obj = r.objetivo || 0;
   const custo = r.totalCost || 0;
   const lucroAlvo = obj - custo;
-  
-  // Se o lucro hoje for menor que o alvo (com folga de 5 cêntimos), fica Laranja
-  if ((r.profit || 0) < (lucroAlvo - 0.05)) {
+
+  // 1. Vermelho: Só se houver prejuízo real
+  if (lucro < 0) return "red";
+
+  // 2. Laranja: Se o lucro atual for menor que o planeado (Armazém subiu ou Quebra aumentou)
+  if (lucro < (lucroAlvo - 0.05)) {
     return "orange";
   }
 
-  // 3. Verde: Estás a cumprir a meta
+  // 3. Verde: Meta atingida ou superada
   return "green";
 }
 
-// ── Vigilante: re-price ingredients from current warehouse ─────────────────
+// ── VIGILANTE DO ARMAZÉM ────────────────────────────────────
 function recomputeIngredientCostFromWarehouse(ingredients: Ingredient[], warehouse: WarehouseItem[]): number {
   let total = 0;
   for (const ing of ingredients) {
     if (!ing.name) continue;
-    
-    // Procura o item no armazém ignorando espaços e maiúsculas
     const wItem = warehouse.find((w) => w.name.trim().toLowerCase() === ing.name.trim().toLowerCase());
-    
-    // Se encontrar no armazém, usa o preço de lá; se não, usa o da receita
     const price = wItem ? wItem.price : (ing.price || 0);
-    
-    // Ajusta o IVA (converte 23 para 0.23 se necessário)
     const rawIva = wItem ? wItem.iva : (ing.iva || 0);
     const iva = rawIva >= 1 ? rawIva / 100 : rawIva;
-    
-    // Se for dúzia (DZ), divide por 12. Se não, usa o preço normal.
     const unitPrice = ing.unit === "DZ" ? price / 12 : price;
-    
     total += (ing.qty || 0) * unitPrice * (1 + iva);
   }
   return total;

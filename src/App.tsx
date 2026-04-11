@@ -276,54 +276,59 @@ function calcRecipe(
   fryerCost: number, 
   energyCostVal: number, 
   isSaved: boolean, 
-  storedObjetivo: number
+  storedObjetivo: number,
+  ivaIngredientes: number,
+  ivaFryer: number,
+  ivaEnergy: number
 ) {
   let totalLiquido = 0;
   let totalIvaAcumulado = 0;
 
-  // 1. CÁLCULO LÍQUIDO + IVA SEPARADO (10€ + 2.30€)
+  // 1. CÁLCULO IGUAL AO QUE TINHAS, MAS SEPARANDO O IVA
   (ingredients || []).forEach(ing => {
     const p = Number(ing.price) || 0;
     const q = Number(ing.qty) || 0;
     const taxaIva = (Number(ing.iva) || 0) / 100;
     const unitP = ing.unit === "DZ" ? p / 12 : p;
     
-    const custoBaseLinha = q * unitP;
-    const valorIvaLinha = custoBaseLinha * taxaIva;
-
-    totalLiquido += custoBaseLinha;
-    totalIvaAcumulado += valorIvaLinha;
+    const custoLinha = q * unitP;
+    totalLiquido += custoLinha;
+    totalIvaAcumulado += (custoLinha * taxaIva);
   });
 
-  const outrosCustos = (Number(fryerCost) || 0) + (Number(energyCostVal) || 0) + (Number(extras) || 0);
-  
-  // O CUSTO TOTAL QUE QUERES VER: EX. 12.30€
-  const totalCost = totalLiquido + totalIvaAcumulado + outrosCustos;
+  // 2. REPOSIÇÃO DOS NOMES QUE O TEU DASHBOARD USA
+  const fryerCostTotal = Number(fryerCost) || 0;
+  const energyCostTotal = Number(energyCostVal) || 0;
+  const extrasTotal = Number(extras) || 0;
 
-  // 2. MATEMÁTICA DE MARGEM
+  // CUSTO FINAL: 10€ + 2.30€ + outros
+  const totalCost = totalLiquido + totalIvaAcumulado + fryerCostTotal + energyCostTotal + extrasTotal;
+
   const marginRate = Math.min((Number(margin) || 0) / 100, 0.99);
   const objetivoTeorico = totalCost / Math.max(1 - marginRate, 0.01);
   const objetivo = (isSaved && storedObjetivo > 0) ? storedObjetivo : objetivoTeorico;
 
-  // 3. FATURAÇÃO (IMPEDE LUCRO NEGATIVO FALSO)
   const dosesTotais = Number(sellPrice) > 0.01 ? objetivo / Number(sellPrice) : 0;
   const faturacaoReal = dosesTotais > 0 
     ? (dosesTotais * (1 - (Number(loss) / 100))) * Number(sellPrice) 
     : objetivo;
 
-  const lucroReal = faturacaoReal - totalCost;
-
+  // 3. RETORNO COM OS NOMES ORIGINAIS (PARA NÃO DAR ERRO NO DASHBOARD)
   return {
     totalCost: Number(totalCost.toFixed(2)),
     objetivo: Number(objetivo.toFixed(2)),
-    lucroReal: Number(lucroReal.toFixed(2)),
+    lucroReal: Number((faturacaoReal - totalCost).toFixed(2)),
     faturacao: Number(faturacaoReal.toFixed(2)),
     doses: Number(dosesTotais.toFixed(2)),
     ivaIngredientes: Number(totalIvaAcumulado.toFixed(2)),
-    targetProfit: Number((objetivo - totalCost).toFixed(2)),
-    roi: totalCost > 0 ? (lucroReal / totalCost) * 100 : 0,
-    fryerCostTotal: Number(fryerCost) || 0,
-    energyCostTotal: Number(energyCostVal) || 0
+    ivaFryer: Number(ivaFryer) || 0,
+    ivaEnergy: Number(ivaEnergy) || 0,
+    nominalProfit: dosesTotais > 0 ? (faturacaoReal - totalCost) / dosesTotais : 0,
+    roi: totalCost > 0 ? ((faturacaoReal - totalCost) / totalCost) * 100 : 0,
+    uberPrice: Number(sellPrice) / (1 - (Number(deliveryRate) / 100 || 0)),
+    targetProfit: objetivo - totalCost,
+    fryerCostTotal,
+    energyCostTotal
   };
 }
 // ── SEMÁFORO (DASHBOARD) ────────────────────────────────────

@@ -402,31 +402,42 @@ function calcRecipe(
 
 
 function computeSemaphore(r: SavedRecipe): "red" | "orange" | "green" {
-  // 1. Vermelho: Lucro negativo ou zero
+  // 1. Vermelho: Se o lucro real for negativo ou zero
   if ((r.profit || 0) <= 0) return "red";
 
-  // 2. Laranja: Se o lucro atual for menor que o esperado (Objetivo - Custo)
-  // Usamos o "|| 0" para garantir que o TypeScript não reclama de valores vazios
+  // 2. Laranja: Se o lucro atual desceu em relação ao plano original
   const obj = r.objetivo || 0;
   const custo = r.totalCost || 0;
   const lucroAlvo = obj - custo;
   
+  // Se o lucro hoje for menor que o alvo (com folga de 5 cêntimos), fica Laranja
   if ((r.profit || 0) < (lucroAlvo - 0.05)) {
     return "orange";
   }
 
-  // 3. Verde: Meta atingida
+  // 3. Verde: Estás a cumprir a meta
   return "green";
 }
+
 // ── Vigilante: re-price ingredients from current warehouse ─────────────────
 function recomputeIngredientCostFromWarehouse(ingredients: Ingredient[], warehouse: WarehouseItem[]): number {
   let total = 0;
   for (const ing of ingredients) {
     if (!ing.name) continue;
+    
+    // Procura o item no armazém ignorando espaços e maiúsculas
     const wItem = warehouse.find((w) => w.name.trim().toLowerCase() === ing.name.trim().toLowerCase());
-    const price = wItem ? wItem.price : ing.price;
-    const iva = wItem ? (wItem.iva >= 1 ? wItem.iva / 100 : wItem.iva) : (ing.iva >= 1 ? ing.iva / 100 : ing.iva);
+    
+    // Se encontrar no armazém, usa o preço de lá; se não, usa o da receita
+    const price = wItem ? wItem.price : (ing.price || 0);
+    
+    // Ajusta o IVA (converte 23 para 0.23 se necessário)
+    const rawIva = wItem ? wItem.iva : (ing.iva || 0);
+    const iva = rawIva >= 1 ? rawIva / 100 : rawIva;
+    
+    // Se for dúzia (DZ), divide por 12. Se não, usa o preço normal.
     const unitPrice = ing.unit === "DZ" ? price / 12 : price;
+    
     total += (ing.qty || 0) * unitPrice * (1 + iva);
   }
   return total;

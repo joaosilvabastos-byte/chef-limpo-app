@@ -276,61 +276,55 @@ function calcRecipe(
   fryerCost: number, 
   energyCostVal: number, 
   isSaved: boolean, 
-  storedObjetivo: number,
-  ivaIngredientes: number = 0,
-  ivaFryer: number = 0,
-  ivaEnergy: number = 0
+  storedObjetivo: number
 ) {
-  const ings = ingredients || [];
+  let totalLiquido = 0;
+  let totalIvaAcumulado = 0;
 
-  // 1. CUSTO TOTAL (Blindado contra strings)
-  const totalBase = ings.reduce((sum, ing) => {
+  // 1. SEPARAÇÃO LÍQUIDO VS IVA
+  (ingredients || []).forEach(ing => {
     const p = Number(ing.price) || 0;
     const q = Number(ing.qty) || 0;
-    const i = (Number(ing.iva) || 0) / 100;
+    const taxaIva = (Number(ing.iva) || 0) / 100;
     const unitP = ing.unit === "DZ" ? p / 12 : p;
-    return sum + (q * unitP * (1 + i));
-  }, 0);
+    
+    const custoBaseLinha = q * unitP;
+    const valorIvaLinha = custoBaseLinha * taxaIva;
 
-  const totalCost = Number(totalBase + (fryerCost || 0) + (energyCostVal || 0) + (extras || 0)) || 0;
-  
-  // 2. TAXAS
+    totalLiquido += custoBaseLinha;
+    totalIvaAcumulado += valorIvaLinha;
+  });
+
+  // 2. CUSTO FINAL (Soma de tudo)
+  const outrosCustos = (Number(fryerCost) || 0) + (Number(energyCostVal) || 0) + (Number(extras) || 0);
+  const totalCost = totalLiquido + totalIvaAcumulado + outrosCustos;
+
+  // 3. MATEMÁTICA DE NEGÓCIO
   const marginRate = Math.min((Number(margin) || 0) / 100, 0.99);
-  const lossRate = Math.min((Number(loss) || 0) / 100, 0.99);
-  const uberRate = Math.min((Number(deliveryRate) || 0) / 100, 0.99);
-
-  // 3. OBJETIVO (O que mantém o teu preço estável)
   const objetivoTeorico = totalCost / Math.max(1 - marginRate, 0.01);
-  const objetivo = (isSaved && Math.abs((Number(storedObjetivo) || 0) - objetivoTeorico) < 0.5)
-    ? Number(storedObjetivo)
-    : objetivoTeorico;
+  const objetivo = (isSaved && storedObjetivo > 0) ? storedObjetivo : objetivoTeorico;
 
-  // 4. DOSES E LUCRO REAL (Aqui resolvemos os -12.30€)
-  const dosesTotais = (Number(sellPrice) || 0) > 0.01 ? (objetivo || 0) / Number(sellPrice) : 0;
-  const dosesVendidasEfetivas = dosesTotais * (1 - lossRate);
-  const faturacaoReal = dosesVendidasEfetivas * (Number(sellPrice) || 0);
+  // 4. FATURAÇÃO E LUCRO (Sem lucro negativo falso se sellPrice for 0)
+  const dosesTotais = Number(sellPrice) > 0.01 ? objetivo / Number(sellPrice) : 0;
+  const faturacaoReal = dosesTotais > 0 
+    ? (dosesTotais * (1 - (Number(loss) / 100))) * Number(sellPrice) 
+    : objetivo;
+
   const lucroReal = faturacaoReal - totalCost;
 
-  // 5. RETORNO SEGURO (Impede o erro .toFixed)
   return {
-    totalCost: Number(totalCost) || 0,
-    objetivo: Number(objetivo) || 0,
-    lucroReal: Number(lucroReal) || 0,
-    faturacao: Number(faturacaoReal) || 0,
-    doses: Number(dosesTotais) || 0,
-    effectiveDelivery: Number(Math.min(deliveryCount || 0, dosesVendidasEfetivas)) || 0,
-    ivaIngredientes: Number(ivaIngredientes) || 0,
-    ivaEnergy: Number(ivaEnergy) || 0,
-    ivaFryer: Number(ivaFryer) || 0,
-    nominalProfit: Number(dosesTotais > 0.01 ? lucroReal / dosesTotais : 0) || 0,
-    roi: Number(totalCost > 0 ? (lucroReal / totalCost) * 100 : 0) || 0,
-    uberPrice: Number((Number(sellPrice) || 0) / Math.max(1 - uberRate, 0.01)) || 0,
-    targetProfit: Number(objetivo - totalCost) || 0,
+    totalCost: Number(totalCost.toFixed(2)),
+    objetivo: Number(objetivo.toFixed(2)),
+    lucroReal: Number(lucroReal.toFixed(2)),
+    faturacao: Number(faturacaoReal.toFixed(2)),
+    doses: Number(dosesTotais.toFixed(2)),
+    ivaIngredientes: Number(totalIvaAcumulado.toFixed(2)), // <--- Aqui estão os teus 23%
+    targetProfit: Number((objetivo - totalCost).toFixed(2)),
+    roi: totalCost > 0 ? (lucroReal / totalCost) * 100 : 0,
     fryerCostTotal: Number(fryerCost) || 0,
     energyCostTotal: Number(energyCostVal) || 0
   };
 }
-
 // ── SEMÁFORO (DASHBOARD) ────────────────────────────────────
 function computeSemaphore(r: SavedRecipe): "red" | "orange" | "green" {
   const lucro = r.profit ?? 0;

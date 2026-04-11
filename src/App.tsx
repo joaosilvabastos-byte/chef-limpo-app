@@ -266,194 +266,112 @@ type SemaphoreState = "idle" | "green" | "orange" | "red";
 
 // ── Engine ─────────────────────────────────────────────────────────────────
 function calcRecipe(
-  ingredients: Ingredient[], extras: number, margin: number,
-  sellPrice: number, loss: number,
-  fryer: boolean, fryerData: FryerData, fryerOilItem: WarehouseItem | undefined,
-  energy: boolean, energyData: EnergyData,
-  deliveryCount: number, deliveryRate: number,
-
-  // 🔴 NOVOS PARÂMETROS
-  isSaved: boolean = false,
-  storedObjetivo: number = 0
-): CalcResult {
-
-  let totalBase = 0, ivaIngredientes = 0;
-
-  ingredients.forEach((ing) => {
-    const qty = ing.qty || 0;
+  ingredients: Ingredient[], 
+  margin: number, 
+  loss: number, 
+  extras: number, 
+  sellPrice: number, 
+  deliveryRate: number, 
+  deliveryCount: number, 
+  fryerCost: number, 
+  energyCostVal: number, 
+  isSaved: boolean, 
+  storedObjetivo: number,
+  ivaIngredientes: number,
+  ivaFryer: number,
+  ivaEnergy: number
+) {
+  // 1. CUSTO BASE
+  const totalBase = ingredients.reduce((sum, ing) => {
     const price = ing.price || 0;
+    const qty = ing.qty || 0;
+    const iva = (ing.iva || 0) / 100;
     const unitPrice = ing.unit === "DZ" ? price / 12 : price;
+    return sum + (qty * unitPrice * (1 + iva));
+  }, 0);
 
-    const itemBase = qty * unitPrice;
-    const iva = ing.iva >= 1 ? ing.iva / 100 : ing.iva;
+  const totalCost = totalBase + (fryerCost || 0) + (energyCostVal || 0) + (extras || 0);
 
-    ivaIngredientes += itemBase * iva;
-    totalBase += itemBase * (1 + iva);
-  });
+  // 2. MARGENS E TAXAS
+  const marginRate = Math.min((margin || 0) / 100, 0.99);
+  const lossRate = Math.min((loss || 0) / 100, 0.99);
+  const uberRate = Math.min((deliveryRate || 0) / 100, 0.99);
 
-  // ── FRITADEIRA ─────────────────────────────────────────
-  let fryerCost = 0, ivaFryer = 0;
+  // 3. OBJETIVO (O PREÇO DE VENDA TOTAL DESEJADO)
+  const targetProfit = totalCost * (marginRate / Math.max(1 - marginRate, 0.01));
+  const objetivoTeorico = totalCost / Math.max(1 - marginRate, 0.01);
+  
+  const objetivo = (isSaved && Math.abs(storedObjetivo - objetivoTeorico) < 0.5)
+    ? storedObjetivo
+    : objetivoTeorico;
 
-  if (fryer) {
-    const oilPricePerL = fryerOilItem ? fryerOilItem.price : 1.25;
-    const oilIva = fryerOilItem
-      ? (fryerOilItem.iva >= 1 ? fryerOilItem.iva / 100 : fryerOilItem.iva)
-      : 0.23;
-
-    const uses = Math.max(fryerData.uses || 1, 1);
-
-    const elec = ((fryerData.watts || 0) / 1000) *
-                 ((fryerData.time || 0) / 60) * 0.22;
-
-    const oilBase = (oilPricePerL * (fryerData.oilLiters || 0)) / uses;
-
-    const base = elec + oilBase;
-
-    ivaFryer = base * oilIva;
-    fryerCost = base * (1 + oilIva);
-  }
-
-  // ── ENERGIA ─────────────────────────────────────────
-  let energyCostVal = 0, ivaEnergy = 0;
-
-  if (energy) {
-    const { cost, power, time, burners, type, iva } = energyData;
-
-    let eBase = 0;
-
-    if (type === "Eletricidade")
-      eBase = ((power * time) / 60 / 1000) * cost;
-    else if (type === "Gás")
-      eBase = ((power * (burners || 1) * time) / 60) * cost;
-    else
-      eBase = power * cost;
-
-    const eIva = iva >= 1 ? iva / 100 : iva;
-
-    ivaEnergy = eBase * eIva;
-    energyCostVal = eBase * (1 + eIva);
-  }
-
-  // ── CUSTO TOTAL ───────────────────────────────────────
-const totalCost = totalBase + (typeof fryerCost !== 'undefined' ? fryerCost : 0) + (typeof energyCostVal !== 'undefined' ? energyCostVal : 0) + (extras || 0);
-
-// ── TAXAS ─────────────────────────────────────────────
-const marginRate = Math.min((margin || 0) / 100, 0.99);
-const lossRate   = Math.min((loss   || 0) / 100, 0.99); // Ex: 0.10 para 10%
-const deliveryRateValue = typeof deliveryRate !== 'undefined' ? deliveryRate : 0;
-const uberRate   = Math.min(deliveryRateValue, 0.99);
-
-// 🔴 1. LUCRO TEÓRICO (Meta baseada na margem)
-const targetProfit = totalCost * (marginRate / Math.max(1 - marginRate, 0.01));
-
-// ── 2. OBJETIVO (INTELIGENTE: REAGE À MARGEM, IGNORA O ARMAZÉM) ──
-const currentMargin = margin;
-const objetivoTeorico = totalCost / (1 - (currentMargin / 100));
-
-// TRAVA: Se já estiver salvo, o objetivo só muda se a alteração for > 0.50€ (mudança de margem)
-const objetivo = (isSaved && Math.abs(storedObjetivo - objetivoTeorico) < 0.5)
-  ? storedObjetivo
-  : objetivoTeorico;
-
-// ── 3. DOSES E FATURAÇÃO (COM QUEBRA REAL) ───────────────────
-  const dosesTotais = sellPrice > 0.01 ? (objetivo || 0) / sellPrice : 0;
+  // 4. DOSES E FATURAÇÃO REAL (AQUI MORRE O ERRO DOS -12.30€)
+  const dosesTotais = sellPrice > 0.01 ? objetivo / sellPrice : 0;
   const dosesVendidasEfetivas = dosesTotais * (1 - lossRate);
-  const faturacaoRealCalculada = dosesVendidasEfetivas * sellPrice;
+  const faturacaoReal = dosesVendidasEfetivas * sellPrice;
 
-  // ── 4. LUCRO REAL (O QUE PINTA O SEMÁFORO) ───────────────────
-  const lucroReal = faturacaoRealCalculada - totalCost;
+  // 5. LUCRO REAL
+  const lucroReal = faturacaoReal - totalCost;
 
-  // Uber: Comissão sobre o que foi vendido
-  const effectiveDelivery = Math.min(deliveryCount, dosesVendidasEfetivas);
-  const uberCommission = effectiveDelivery * sellPrice * uberRate;
-
-  // ── 5. INDICADORES FINAIS ────────────────────────────────────
+  // 6. INDICADORES
   const nominalProfit = dosesTotais > 0.01 ? lucroReal / dosesTotais : 0;
-  const roi = (totalCost > 0) ? (lucroReal / totalCost) * 100 : 0;
-  const uberPrice = uberRate > 0 ? sellPrice / (1 - uberRate) : sellPrice;
+  const roi = totalCost > 0 ? (lucroReal / totalCost) * 100 : 0;
+  const uberPrice = sellPrice / Math.max(1 - uberRate, 0.01);
 
   return {
-    totalCost, objetivo, lucroReal, faturacao: faturacaoRealCalculada,
-    doses: dosesTotais, effectiveDelivery, ivaIngredientes,
-    ivaEnergy: typeof ivaEnergy !== 'undefined' ? ivaEnergy : 0,
-    ivaFryer: typeof ivaFryer !== 'undefined' ? ivaFryer : 0,
+    totalCost, objetivo, lucroReal, faturacao: faturacaoReal,
+    doses: dosesTotais, effectiveDelivery: Math.min(deliveryCount, dosesVendidasEfetivas),
+    ivaIngredientes, ivaEnergy, ivaFryer,
     nominalProfit, uberPrice, targetProfit, roi,
-    fryerCostTotal: typeof fryerCost !== 'undefined' ? fryerCost : 0,
-    energyCostTotal: typeof energyCostVal !== 'undefined' ? energyCostVal : 0
+    fryerCostTotal: fryerCost, energyCostTotal: energyCostVal
   } as any;
+}
 
 // ── SEMÁFORO (DASHBOARD) ────────────────────────────────────
 function computeSemaphore(r: SavedRecipe): "red" | "orange" | "green" {
-const lucro = r.profit || 0;
-const obj = r.objetivo || 0;
-const custo = r.totalCost || 0;
-const lucroAlvo = obj - custo;
-
-// 1. Vermelho: Se houver prejuízo real (lucro < 0)
-if (lucro < 0) return "red";
-
-// 2. Laranja: Se o lucro desceu (Armazém subiu ou Quebra aumentou)
-if (lucro < (lucroAlvo - 0.05)) {
-  return "orange";
-}
-
-// 3. Verde: Estás a cumprir ou superar a meta
-return "green";
+  const lucro = r.profit ?? 0;
+  const obj = r.objetivo ?? 0;
+  const custo = r.totalCost ?? 0;
+  const lucroAlvo = obj - custo;
+  if (lucro < 0) return "red";
+  if (lucro < (lucroAlvo - 0.05)) return "orange";
+  return "green";
 }
 
 // ── VIGILANTE DO ARMAZÉM ────────────────────────────────────
 function recomputeIngredientCostFromWarehouse(ingredients: Ingredient[], warehouse: WarehouseItem[]): number {
-let total = 0;
-for (const ing of ingredients) {
-  if (!ing.name) continue;
-  const wItem = warehouse.find((w) => w.name.trim().toLowerCase() === ing.name.trim().toLowerCase());
-  const price = wItem ? wItem.price : (ing.price || 0);
-  const rawIva = wItem ? wItem.iva : (ing.iva || 0);
-  const iva = rawIva >= 1 ? rawIva / 100 : rawIva;
-  const unitPrice = ing.unit === "DZ" ? price / 12 : price;
-  total += (ing.qty || 0) * unitPrice * (1 + iva);
-}
-return total;
+  let total = 0;
+  for (const ing of ingredients) {
+    if (!ing.name) continue;
+    const wItem = warehouse.find((w) => w.name.trim().toLowerCase() === ing.name.trim().toLowerCase());
+    const price = wItem ? wItem.price : (ing.price || 0);
+    const rawIva = wItem ? wItem.iva : (ing.iva || 0);
+    const iva = rawIva >= 1 ? rawIva / 100 : rawIva;
+    const unitPrice = ing.unit === "DZ" ? price / 12 : price;
+    total += (ing.qty || 0) * unitPrice * (1 + iva);
+  }
+  return total;
 }
 
 function computeCostAlerts(activeRecipes: SavedRecipe[], _warehouse: WarehouseItem[], acknowledgedKeys: Set<string>): CostAlert[] {
   const alerts: CostAlert[] = [];
-  
   for (const r of activeRecipes) {
-    if (acknowledgedKeys.has(r.key)) continue;
-    
-    // 1. Só nos importamos com receitas que têm ingredientes e um objetivo definido
-    if (!r.ingredients?.length || !r.objetivo) continue;
-
-    // 2. O lucro real que o dashboard está a calcular agora
-    const lucroAtual = r.profit; 
-
-    // 🟢 A REGRA DE OURO DO CHEF:
-    // Só dispara alerta se o lucro for negativo (estás a perder dinheiro)
-    // ou se o lucro caiu drasticamente abaixo de zero.
-    const isLosingMoney = lucroAtual < 0;
-
-    if (isLosingMoney) {
-      // Como não queremos ser "chato", usamos um custo base para comparação
+    if (acknowledgedKeys.has(r.key) || !r.ingredients?.length || !r.objetivo) continue;
+    if ((r.profit ?? 0) < 0) {
       const marginRate = Math.min((r.margin || 0) / 100, 0.99);
-      const originalTotalCost = r.objetivo * (1 - marginRate);
-
-      alerts.push({ 
-        recipeKey: r.key, 
-        recipeName: r.name, 
-        oldCost: originalTotalCost, 
-        newCost: r.totalCost 
-      });
+      alerts.push({ recipeKey: r.key, recipeName: r.name, oldCost: r.objetivo * (1 - marginRate), newCost: r.totalCost || 0 });
     }
   }
   return alerts;
 }
 
-// ── Utils ──────────────────────────────────────────────────────────────────
+// ── Utils ───────────────────────────────────────────────────
 function newId() { return "ID_" + Date.now() + Math.floor(Math.random() * 1000); }
 function fmtDate(iso: string) {
-  try { const d = new Date(iso); return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`; }
-  catch { return iso.slice(0, 10); }
+  try { 
+    const d = new Date(iso); 
+    return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`; 
+  } catch { return iso.slice(0, 10); }
 }
 
 const STORAGE_PREFIX = "CHEFV2_";
@@ -472,7 +390,6 @@ function getAllRecipes(): SavedRecipe[] {
   return result.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-// ── Toast ─────────────────────────────────────────────────────────────────
 function ToastContainer({ toasts }: { toasts: ToastItem[] }) {
   return (
     <div className="toast-container">
@@ -482,6 +399,8 @@ function ToastContainer({ toasts }: { toasts: ToastItem[] }) {
     </div>
   );
 }
+
+// ── FIM DAS UTILIDADES (Garanta que a próxima linha é o export default function App() { )
 
 // ── PRO Modal ─────────────────────────────────────────────────────────────
 function ProModal({ onActivate, onClose, t }: { onActivate: () => void; onClose: () => void; t: Record<string, string> }) {

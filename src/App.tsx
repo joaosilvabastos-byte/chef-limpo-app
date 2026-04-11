@@ -334,41 +334,15 @@ function calcRecipe(
     energyCostVal = eBase * (1 + eIva);
   }
 
-  // ── CUSTO TOTAL ───────────────────────────────────────
-  const totalCost = totalBase + (typeof fryerCost !== 'undefined' ? fryerCost : 0) + (typeof energyCostVal !== 'undefined' ? energyCostVal : 0) + (extras || 0);
-
-  // ── TAXAS ─────────────────────────────────────────────
-  const marginRate = Math.min((margin || 0) / 100, 0.99);
-  const lossRate   = Math.min((loss   || 0) / 100, 0.99);
-  const deliveryRateValue = typeof deliveryRate !== 'undefined' ? deliveryRate : 0;
-  const uberRate   = Math.min(deliveryRateValue, 0.99);
-
-  // 🔴 1. LUCRO TEÓRICO (Meta baseada na margem)
-  const targetProfit = totalCost * (marginRate / Math.max(1 - marginRate, 0.01));
-
-  // ── 2. OBJETIVO (INTELIGENTE: REAGE À MARGEM, IGNORA O ARMAZÉM) ──
-  const currentMargin = margin;
-  const objetivoTeorico = totalCost / (1 - (currentMargin / 100));
-
-  // TRAVA: O objetivo só muda se a alteração for > 0.50€ (evita mexer com o armazém)
-  const objetivo = (isSaved && Math.abs(storedObjetivo - objetivoTeorico) < 0.5)
-    ? storedObjetivo
-    : objetivoTeorico;
-
   // ── 3. DOSES E FATURAÇÃO (COM QUEBRA REAL) ───────────────────
   const dosesTotais = sellPrice > 0.01 ? objetivo / sellPrice : 0;
-  
-  // A QUEBRA: Só ganhas dinheiro pelo que NÃO é quebra
   const dosesVendidasEfetivas = dosesTotais * (1 - lossRate);
   const faturacaoRealCalculada = dosesVendidasEfetivas * sellPrice;
 
-  // ── 4. LUCRO REAL (O QUE PINTA O DASHBOARD) ──────────────────
+  // ── 4. LUCRO REAL (O QUE VAI PARA O DASHBOARD) ───────────────
   const lucroReal = faturacaoRealCalculada - totalCost;
-
-  // Ponto de referência para o Laranja
   const lucroOriginal = isSaved ? (storedObjetivo - totalCost) : lucroReal;
 
-  // Uber: Comissão sobre o que foi realmente vendido
   const effectiveDelivery = Math.min(deliveryCount, dosesVendidasEfetivas);
   const uberCommission = effectiveDelivery * sellPrice * uberRate;
 
@@ -378,19 +352,11 @@ function calcRecipe(
   const uberPrice = uberRate > 0 ? sellPrice / (1 - uberRate) : sellPrice;
 
   return {
-    totalCost,
-    objetivo,
-    lucroReal,
-    faturacao: faturacaoRealCalculada,
-    doses: dosesTotais,
-    effectiveDelivery,
-    ivaIngredientes,
+    totalCost, objetivo, lucroReal, faturacao: faturacaoRealCalculada,
+    doses: dosesTotais, effectiveDelivery, ivaIngredientes,
     ivaEnergy: typeof ivaEnergy !== 'undefined' ? ivaEnergy : 0,
     ivaFryer: typeof ivaFryer !== 'undefined' ? ivaFryer : 0,
-    nominalProfit,
-    uberPrice,
-    targetProfit,
-    roi,
+    nominalProfit, uberPrice, targetProfit, roi,
     fryerCostTotal: typeof fryerCost !== 'undefined' ? fryerCost : 0,
     energyCostTotal: typeof energyCostVal !== 'undefined' ? energyCostVal : 0
   } as any;
@@ -398,9 +364,9 @@ function calcRecipe(
 
 // ── SEMÁFORO (DASHBOARD) ────────────────────────────────────
 function computeSemaphore(r: SavedRecipe): "red" | "orange" | "green" {
-  const lucro = r.profit || 0;
-  const obj = r.objetivo || 0;
-  const custo = r.totalCost || 0;
+  const lucro = r.profit ?? 0;
+  const obj = r.objetivo ?? 0;
+  const custo = r.totalCost ?? 0;
   const lucroAlvo = obj - custo;
 
   if (lucro < 0) return "red";
@@ -426,26 +392,17 @@ function recomputeIngredientCostFromWarehouse(ingredients: Ingredient[], warehou
 function computeCostAlerts(activeRecipes: SavedRecipe[], _warehouse: WarehouseItem[], acknowledgedKeys: Set<string>): CostAlert[] {
   const alerts: CostAlert[] = [];
   for (const r of activeRecipes) {
-    if (acknowledgedKeys.has(r.key)) continue;
-    if (!r.ingredients?.length || !r.objetivo) continue;
-
-    const lucroAtual = r.profit || 0;
+    if (acknowledgedKeys.has(r.key) || !r.ingredients?.length || !r.objetivo) continue;
+    
+    const lucroAtual = r.profit ?? 0;
     if (lucroAtual < 0) {
       const marginRate = Math.min((r.margin || 0) / 100, 0.99);
       const originalTotalCost = r.objetivo * (1 - marginRate);
-      alerts.push({ 
-        recipeKey: r.key, 
-        recipeName: r.name, 
-        oldCost: originalTotalCost, 
-        newCost: r.totalCost || 0 
-      });
+      alerts.push({ recipeKey: r.key, recipeName: r.name, oldCost: originalTotalCost, newCost: r.totalCost || 0 });
     }
   }
   return alerts;
 }
-
-// ── Utils ──────────────────────────────────────────────────────────────────
-function newId() { return "ID_" + Date.now() + Math.floor(Math.random() * 1000); }
 
 // ── Toast ─────────────────────────────────────────────────────────────────
 function ToastContainer({ toasts }: { toasts: ToastItem[] }) {

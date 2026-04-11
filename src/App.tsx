@@ -348,27 +348,22 @@ function calcRecipe(
   const targetProfit = totalCost * (marginRate / Math.max(1 - marginRate, 0.01));
 
  
-// ── 2. OBJETIVO (O EQUILÍBRIO PERFEITO) ───────────────────
-  // 1. Definimos a margem atual (do ecrã) e a original (da receita)
+// ── 2. OBJETIVO (INTELIGENTE: REAGE À MARGEM, IGNORA O ARMAZÉM) ──
   const currentMargin = margin;
-  // Se não existir margem guardada, assumimos a atual para não dar erro
-  const marginOriginal = (typeof (isSaved as any) !== 'undefined' && (isSaved as any).margin) 
-    ? (isSaved as any).margin 
-    : currentMargin;
-  
-  // 2. Calculamos o objetivo ideal baseado no custo e margem atuais
-  const objetivoPelaMargem = totalCost / (1 - (currentMargin / 100));
+  const objetivoTeorico = totalCost / (1 - (currentMargin / 100));
 
-  // 3. Lógica Blindada: 
-  // Se mudares o Armazém: marginOriginal e currentMargin são iguais -> Objetivo não mexe.
-  // Se mudares a Margem: currentMargin muda -> Objetivo reage na hora.
-  const objetivo = (isSaved && storedObjetivo > 0.1)
-    ? (storedObjetivo * ( (1 - (marginOriginal / 100)) / (1 - (currentMargin / 100)) ))
-    : objetivoPelaMargem;
+  // Se a diferença for < 0.50€, mantemos o valor guardado (mudança no Armazém)
+  // Se for > 0.50€, o objetivo segue a nova margem que escreveste.
+  const objetivo = (isSaved && Math.abs(storedObjetivo - objetivoTeorico) < 0.5)
+    ? storedObjetivo
+    : objetivoTeorico;
 
-  // ── 3. LUCRO REAL (O ELÁSTICO) ──────────────────────
+  // ── 3. LUCRO REAL E ORIGINAL (PARA O SEMÁFORO) ──
   const lucroReal = objetivo - totalCost;
 
+  // Corrigido: Usamos a lógica de comparação para o Dashboard
+  // O lucroOriginal é o ponto de referência para o Laranja aparecer.
+  const lucroOriginal = isSaved ? (storedObjetivo - totalCost) : lucroReal;
   // ── 4. DOSES E FATURAÇÃO ────────────────────────────────────
   const doses = sellPrice > 0.01 ? objetivo / sellPrice : 0;
 
@@ -406,27 +401,22 @@ function calcRecipe(
 }
 
 
-function computeSemaphore(activeRecipes: SavedRecipe[]): SemaphoreState {
-  if (activeRecipes.length === 0) return "idle";
+function computeSemaphore(r: SavedRecipe): "red" | "orange" | "green" {
+  // 1. Vermelho: Lucro negativo ou zero
+  if ((r.profit || 0) <= 0) return "red";
+
+  // 2. Laranja: Se o lucro atual for menor que o esperado (Objetivo - Custo)
+  // Usamos o "|| 0" para garantir que o TypeScript não reclama de valores vazios
+  const obj = r.objetivo || 0;
+  const custo = r.totalCost || 0;
+  const lucroAlvo = obj - custo;
   
-  let worst: SemaphoreState = "green";
-
-  for (const r of activeRecipes) {
-    if (!r.sellPrice || r.sellPrice <= 0) continue;
-    
-    // 1. REGRA DO VERMELHO: Se o lucro for menor que zero (Prejuízo)
-    if (r.profit < 0) return "red"; 
-
-    // 2. REGRA DO LARANJA: Se o lucro for positivo mas menor que o objetivo (r.objetivo - r.totalCost)
-    const lucroAlvo = r.objetivo ? (r.objetivo - r.totalCost) : 0;
-    
-    if (r.profit < (lucroAlvo - 0.01)) { 
-      // Se houver qualquer perda em relação ao objetivo, mas ainda for positivo, fica Laranja
-      if (worst === "green") worst = "orange";
-    }
+  if ((r.profit || 0) < (lucroAlvo - 0.05)) {
+    return "orange";
   }
-  
-  return worst;
+
+  // 3. Verde: Meta atingida
+  return "green";
 }
 // ── Vigilante: re-price ingredients from current warehouse ─────────────────
 function recomputeIngredientCostFromWarehouse(ingredients: Ingredient[], warehouse: WarehouseItem[]): number {

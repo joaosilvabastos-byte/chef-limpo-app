@@ -281,7 +281,7 @@ function calcRecipe(
   let totalLiquido = 0;
   let totalIvaAcumulado = 0;
 
-  // 1. SEPARAÇÃO LÍQUIDO VS IVA
+  // 1. CÁLCULO LÍQUIDO + IVA SEPARADO (10€ + 2.30€)
   (ingredients || []).forEach(ing => {
     const p = Number(ing.price) || 0;
     const q = Number(ing.qty) || 0;
@@ -295,16 +295,17 @@ function calcRecipe(
     totalIvaAcumulado += valorIvaLinha;
   });
 
-  // 2. CUSTO FINAL (Soma de tudo)
   const outrosCustos = (Number(fryerCost) || 0) + (Number(energyCostVal) || 0) + (Number(extras) || 0);
+  
+  // O CUSTO TOTAL QUE QUERES VER: EX. 12.30€
   const totalCost = totalLiquido + totalIvaAcumulado + outrosCustos;
 
-  // 3. MATEMÁTICA DE NEGÓCIO
+  // 2. MATEMÁTICA DE MARGEM
   const marginRate = Math.min((Number(margin) || 0) / 100, 0.99);
   const objetivoTeorico = totalCost / Math.max(1 - marginRate, 0.01);
   const objetivo = (isSaved && storedObjetivo > 0) ? storedObjetivo : objetivoTeorico;
 
-  // 4. FATURAÇÃO E LUCRO (Sem lucro negativo falso se sellPrice for 0)
+  // 3. FATURAÇÃO (IMPEDE LUCRO NEGATIVO FALSO)
   const dosesTotais = Number(sellPrice) > 0.01 ? objetivo / Number(sellPrice) : 0;
   const faturacaoReal = dosesTotais > 0 
     ? (dosesTotais * (1 - (Number(loss) / 100))) * Number(sellPrice) 
@@ -318,7 +319,7 @@ function calcRecipe(
     lucroReal: Number(lucroReal.toFixed(2)),
     faturacao: Number(faturacaoReal.toFixed(2)),
     doses: Number(dosesTotais.toFixed(2)),
-    ivaIngredientes: Number(totalIvaAcumulado.toFixed(2)), // <--- Aqui estão os teus 23%
+    ivaIngredientes: Number(totalIvaAcumulado.toFixed(2)),
     targetProfit: Number((objetivo - totalCost).toFixed(2)),
     roi: totalCost > 0 ? (lucroReal / totalCost) * 100 : 0,
     fryerCostTotal: Number(fryerCost) || 0,

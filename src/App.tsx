@@ -356,46 +356,31 @@ const objetivo = (isSaved && Math.abs(storedObjetivo - objetivoTeorico) < 0.5)
   : objetivoTeorico;
 
 // ── 3. DOSES E FATURAÇÃO (COM QUEBRA REAL) ───────────────────
-const dosesTotais = sellPrice > 0.01 ? objetivo / sellPrice : 0;
+  const dosesTotais = sellPrice > 0.01 ? (objetivo || 0) / sellPrice : 0;
+  const dosesVendidasEfetivas = dosesTotais * (1 - lossRate);
+  const faturacaoRealCalculada = dosesVendidasEfetivas * sellPrice;
 
-// A QUEBRA ATUA AQUI: Só vendes o que sobra das doses produzidas
-const dosesVendidasEfetivas = dosesTotais * (1 - lossRate);
-const faturacaoRealCalculada = dosesVendidasEfetivas * sellPrice;
+  // ── 4. LUCRO REAL (O QUE PINTA O SEMÁFORO) ───────────────────
+  const lucroReal = faturacaoRealCalculada - totalCost;
 
-// ── 4. LUCRO REAL (O QUE VAI PARA O DASHBOARD) ───────────────
-// O lucroReal agora abate o custo total da faturação que realmente aconteceu
-const lucroReal = faturacaoRealCalculada - totalCost;
+  // Uber: Comissão sobre o que foi vendido
+  const effectiveDelivery = Math.min(deliveryCount, dosesVendidasEfetivas);
+  const uberCommission = effectiveDelivery * sellPrice * uberRate;
 
-// Ponto de referência para o Semáforo Laranja
-const lucroOriginal = isSaved ? (storedObjetivo - totalCost) : lucroReal;
+  // ── 5. INDICADORES FINAIS ────────────────────────────────────
+  const nominalProfit = dosesTotais > 0.01 ? lucroReal / dosesTotais : 0;
+  const roi = (totalCost > 0) ? (lucroReal / totalCost) * 100 : 0;
+  const uberPrice = uberRate > 0 ? sellPrice / (1 - uberRate) : sellPrice;
 
-// Uber: Comissão sobre as doses efetivamente vendidas
-const effectiveDelivery = Math.min(deliveryCount, dosesVendidasEfetivas);
-const uberCommission = effectiveDelivery * sellPrice * uberRate;
-
-// ── 5. INDICADORES FINAIS ───────────────────────────
-const nominalProfit = dosesTotais > 0.01 ? lucroReal / dosesTotais : 0;
-const roi = (totalCost > 0 && lucroReal !== 0) ? (lucroReal / totalCost) * 100 : 0;
-const uberPrice = uberRate > 0 ? sellPrice / (1 - uberRate) : sellPrice;
-
-return {
-  totalCost,
-  objetivo,
-  lucroReal,
-  faturacao: faturacaoRealCalculada,
-  doses: dosesTotais,
-  effectiveDelivery,
-  ivaIngredientes,
-  ivaEnergy: typeof ivaEnergy !== 'undefined' ? ivaEnergy : 0,
-  ivaFryer: typeof ivaFryer !== 'undefined' ? ivaFryer : 0,
-  nominalProfit,
-  uberPrice,
-  targetProfit,
-  roi,
-  fryerCostTotal: typeof fryerCost !== 'undefined' ? fryerCost : 0,
-  energyCostTotal: typeof energyCostVal !== 'undefined' ? energyCostVal : 0
-} as any;
-}
+  return {
+    totalCost, objetivo, lucroReal, faturacao: faturacaoRealCalculada,
+    doses: dosesTotais, effectiveDelivery, ivaIngredientes,
+    ivaEnergy: typeof ivaEnergy !== 'undefined' ? ivaEnergy : 0,
+    ivaFryer: typeof ivaFryer !== 'undefined' ? ivaFryer : 0,
+    nominalProfit, uberPrice, targetProfit, roi,
+    fryerCostTotal: typeof fryerCost !== 'undefined' ? fryerCost : 0,
+    energyCostTotal: typeof energyCostVal !== 'undefined' ? energyCostVal : 0
+  } as any;
 
 // ── SEMÁFORO (DASHBOARD) ────────────────────────────────────
 function computeSemaphore(r: SavedRecipe): "red" | "orange" | "green" {

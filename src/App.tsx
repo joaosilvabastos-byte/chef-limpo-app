@@ -334,15 +334,33 @@ function calcRecipe(
     energyCostVal = eBase * (1 + eIva);
   }
 
+ // ── CUSTO TOTAL ───────────────────────────────────────
+  const totalCost = totalBase + (typeof fryerCost !== 'undefined' ? fryerCost : 0) + (typeof energyCostVal !== 'undefined' ? energyCostVal : 0) + (extras || 0);
+
+  // ── TAXAS ─────────────────────────────────────────────
+  const marginRate = Math.min((margin || 0) / 100, 0.99);
+  const lossRate   = Math.min((loss   || 0) / 100, 0.99);
+  const deliveryRateValue = typeof deliveryRate !== 'undefined' ? deliveryRate : 0;
+  const uberRate   = Math.min(deliveryRateValue, 0.99);
+
+  // 🔴 1. LUCRO TEÓRICO (Meta baseada na margem)
+  const targetProfit = totalCost * (marginRate / Math.max(1 - marginRate, 0.01));
+
+  // ── 2. OBJETIVO (INTELIGENTE: REAGE À MARGEM, IGNORA O ARMAZÉM) ──
+  const objetivoTeorico = totalCost / (1 - (margin / 100));
+  const objetivo = (isSaved && Math.abs(storedObjetivo - objetivoTeorico) < 0.5)
+    ? storedObjetivo
+    : objetivoTeorico;
+
   // ── 3. DOSES E FATURAÇÃO (COM QUEBRA REAL) ───────────────────
-  const dosesTotais = sellPrice > 0.01 ? (objetivo || 0) / sellPrice : 0;
+  const dosesTotais = sellPrice > 0.01 ? objetivo / sellPrice : 0;
   const dosesVendidasEfetivas = dosesTotais * (1 - lossRate);
   const faturacaoRealCalculada = dosesVendidasEfetivas * sellPrice;
 
   // ── 4. LUCRO REAL ────────────────────────────────────────────
   const lucroReal = faturacaoRealCalculada - totalCost;
-  const lucroOriginal = isSaved ? ((storedObjetivo || 0) - totalCost) : lucroReal;
 
+  // Uber: Comissão sobre o que foi vendido
   const effectiveDelivery = Math.min(deliveryCount, dosesVendidasEfetivas);
   const uberCommission = effectiveDelivery * sellPrice * uberRate;
 
@@ -368,13 +386,12 @@ function computeSemaphore(r: SavedRecipe): "red" | "orange" | "green" {
   const obj = r.objetivo ?? 0;
   const custo = r.totalCost ?? 0;
   const lucroAlvo = obj - custo;
-
   if (lucro < 0) return "red";
   if (lucro < (lucroAlvo - 0.05)) return "orange";
   return "green";
 }
 
-// ── VIGILANTE ───────────────────────────────────────────────
+// ── VIGILANTE DO ARMAZÉM ────────────────────────────────────
 function recomputeIngredientCostFromWarehouse(ingredients: Ingredient[], warehouse: WarehouseItem[]): number {
   let total = 0;
   for (const ing of ingredients) {
@@ -395,12 +412,7 @@ function computeCostAlerts(activeRecipes: SavedRecipe[], _warehouse: WarehouseIt
     if (acknowledgedKeys.has(r.key) || !r.ingredients?.length || !r.objetivo) continue;
     if ((r.profit ?? 0) < 0) {
       const marginRate = Math.min((r.margin || 0) / 100, 0.99);
-      alerts.push({ 
-        recipeKey: r.key, 
-        recipeName: r.name, 
-        oldCost: r.objetivo * (1 - marginRate), 
-        newCost: r.totalCost || 0 
-      });
+      alerts.push({ recipeKey: r.key, recipeName: r.name, oldCost: r.objetivo * (1 - marginRate), newCost: r.totalCost || 0 });
     }
   }
   return alerts;

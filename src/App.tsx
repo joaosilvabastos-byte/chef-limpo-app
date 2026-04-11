@@ -266,7 +266,7 @@ type SemaphoreState = "idle" | "green" | "orange" | "red";
 
 // ── Engine ─────────────────────────────────────────────────────────────────
 function calcRecipe(
-  ingredients: Ingredient[], 
+  ingredients: any[], 
   margin: number, 
   loss: number, 
   extras: number, 
@@ -277,54 +277,58 @@ function calcRecipe(
   energyCostVal: number, 
   isSaved: boolean, 
   storedObjetivo: number,
-  ivaIngredientes: number,
-  ivaFryer: number,
-  ivaEnergy: number
+  ivaIngredientes: number = 0,
+  ivaFryer: number = 0,
+  ivaEnergy: number = 0
 ) {
-  // 1. CUSTO BASE
-  const totalBase = ingredients.reduce((sum, ing) => {
-    const price = ing.price || 0;
-    const qty = ing.qty || 0;
-    const iva = (ing.iva || 0) / 100;
-    const unitPrice = ing.unit === "DZ" ? price / 12 : price;
-    return sum + (qty * unitPrice * (1 + iva));
+  const ings = ingredients || [];
+
+  // 1. CUSTO TOTAL (Blindado contra strings)
+  const totalBase = ings.reduce((sum, ing) => {
+    const p = Number(ing.price) || 0;
+    const q = Number(ing.qty) || 0;
+    const i = (Number(ing.iva) || 0) / 100;
+    const unitP = ing.unit === "DZ" ? p / 12 : p;
+    return sum + (q * unitP * (1 + i));
   }, 0);
 
-  const totalCost = totalBase + (fryerCost || 0) + (energyCostVal || 0) + (extras || 0);
-
-  // 2. MARGENS E TAXAS
-  const marginRate = Math.min((margin || 0) / 100, 0.99);
-  const lossRate = Math.min((loss || 0) / 100, 0.99);
-  const uberRate = Math.min((deliveryRate || 0) / 100, 0.99);
-
-  // 3. OBJETIVO (O PREÇO DE VENDA TOTAL DESEJADO)
-  const targetProfit = totalCost * (marginRate / Math.max(1 - marginRate, 0.01));
-  const objetivoTeorico = totalCost / Math.max(1 - marginRate, 0.01);
+  const totalCost = Number(totalBase + (fryerCost || 0) + (energyCostVal || 0) + (extras || 0)) || 0;
   
-  const objetivo = (isSaved && Math.abs(storedObjetivo - objetivoTeorico) < 0.5)
-    ? storedObjetivo
+  // 2. TAXAS
+  const marginRate = Math.min((Number(margin) || 0) / 100, 0.99);
+  const lossRate = Math.min((Number(loss) || 0) / 100, 0.99);
+  const uberRate = Math.min((Number(deliveryRate) || 0) / 100, 0.99);
+
+  // 3. OBJETIVO (O que mantém o teu preço estável)
+  const objetivoTeorico = totalCost / Math.max(1 - marginRate, 0.01);
+  const objetivo = (isSaved && Math.abs((Number(storedObjetivo) || 0) - objetivoTeorico) < 0.5)
+    ? Number(storedObjetivo)
     : objetivoTeorico;
 
-  // 4. DOSES E FATURAÇÃO REAL (AQUI MORRE O ERRO DOS -12.30€)
-  const dosesTotais = sellPrice > 0.01 ? objetivo / sellPrice : 0;
+  // 4. DOSES E LUCRO REAL (Aqui resolvemos os -12.30€)
+  const dosesTotais = (Number(sellPrice) || 0) > 0.01 ? (objetivo || 0) / Number(sellPrice) : 0;
   const dosesVendidasEfetivas = dosesTotais * (1 - lossRate);
-  const faturacaoReal = dosesVendidasEfetivas * sellPrice;
-
-  // 5. LUCRO REAL
+  const faturacaoReal = dosesVendidasEfetivas * (Number(sellPrice) || 0);
   const lucroReal = faturacaoReal - totalCost;
 
-  // 6. INDICADORES
-  const nominalProfit = dosesTotais > 0.01 ? lucroReal / dosesTotais : 0;
-  const roi = totalCost > 0 ? (lucroReal / totalCost) * 100 : 0;
-  const uberPrice = sellPrice / Math.max(1 - uberRate, 0.01);
-
+  // 5. RETORNO SEGURO (Impede o erro .toFixed)
   return {
-    totalCost, objetivo, lucroReal, faturacao: faturacaoReal,
-    doses: dosesTotais, effectiveDelivery: Math.min(deliveryCount, dosesVendidasEfetivas),
-    ivaIngredientes, ivaEnergy, ivaFryer,
-    nominalProfit, uberPrice, targetProfit, roi,
-    fryerCostTotal: fryerCost, energyCostTotal: energyCostVal
-  } as any;
+    totalCost: Number(totalCost) || 0,
+    objetivo: Number(objetivo) || 0,
+    lucroReal: Number(lucroReal) || 0,
+    faturacao: Number(faturacaoReal) || 0,
+    doses: Number(dosesTotais) || 0,
+    effectiveDelivery: Number(Math.min(deliveryCount || 0, dosesVendidasEfetivas)) || 0,
+    ivaIngredientes: Number(ivaIngredientes) || 0,
+    ivaEnergy: Number(ivaEnergy) || 0,
+    ivaFryer: Number(ivaFryer) || 0,
+    nominalProfit: Number(dosesTotais > 0.01 ? lucroReal / dosesTotais : 0) || 0,
+    roi: Number(totalCost > 0 ? (lucroReal / totalCost) * 100 : 0) || 0,
+    uberPrice: Number((Number(sellPrice) || 0) / Math.max(1 - uberRate, 0.01)) || 0,
+    targetProfit: Number(objetivo - totalCost) || 0,
+    fryerCostTotal: Number(fryerCost) || 0,
+    energyCostTotal: Number(energyCostVal) || 0
+  };
 }
 
 // ── SEMÁFORO (DASHBOARD) ────────────────────────────────────

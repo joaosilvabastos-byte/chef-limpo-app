@@ -334,88 +334,157 @@ function calcRecipe(
     energyCostVal = eBase * (1 + eIva);
   }
 
- // ── CUSTO TOTAL ───────────────────────────────────────
-  const totalCost = totalBase + (typeof fryerCost !== 'undefined' ? fryerCost : 0) + (typeof energyCostVal !== 'undefined' ? energyCostVal : 0) + (extras || 0);
+  // ── CUSTO TOTAL ───────────────────────────────────────
+const totalCost = totalBase + (typeof fryerCost !== 'undefined' ? fryerCost : 0) + (typeof energyCostVal !== 'undefined' ? energyCostVal : 0) + (extras || 0);
 
-  // ── TAXAS ─────────────────────────────────────────────
-  const marginRate = Math.min((margin || 0) / 100, 0.99);
-  const lossRate   = Math.min((loss   || 0) / 100, 0.99);
-  const deliveryRateValue = typeof deliveryRate !== 'undefined' ? deliveryRate : 0;
-  const uberRate   = Math.min(deliveryRateValue, 0.99);
+// ── TAXAS ─────────────────────────────────────────────
+const marginRate = Math.min((margin || 0) / 100, 0.99);
+const lossRate   = Math.min((loss   || 0) / 100, 0.99); // Ex: 0.10 para 10%
+const deliveryRateValue = typeof deliveryRate !== 'undefined' ? deliveryRate : 0;
+const uberRate   = Math.min(deliveryRateValue, 0.99);
 
-  // 🔴 1. LUCRO TEÓRICO (Meta baseada na margem)
-  const targetProfit = totalCost * (marginRate / Math.max(1 - marginRate, 0.01));
+// 🔴 1. LUCRO TEÓRICO (Meta baseada na margem)
+const targetProfit = totalCost * (marginRate / Math.max(1 - marginRate, 0.01));
 
-  // ── 2. OBJETIVO (INTELIGENTE: REAGE À MARGEM, IGNORA O ARMAZÉM) ──
-  const objetivoTeorico = totalCost / (1 - (margin / 100));
-  const objetivo = (isSaved && Math.abs(storedObjetivo - objetivoTeorico) < 0.5)
-    ? storedObjetivo
-    : objetivoTeorico;
+// ── 2. OBJETIVO (INTELIGENTE: REAGE À MARGEM, IGNORA O ARMAZÉM) ──
+const currentMargin = margin;
+const objetivoTeorico = totalCost / (1 - (currentMargin / 100));
 
-  // ── 3. DOSES E FATURAÇÃO (COM QUEBRA REAL) ───────────────────
-  const dosesTotais = sellPrice > 0.01 ? objetivo / sellPrice : 0;
-  const dosesVendidasEfetivas = dosesTotais * (1 - lossRate);
-  const faturacaoRealCalculada = dosesVendidasEfetivas * sellPrice;
+// TRAVA: Se já estiver salvo, o objetivo só muda se a alteração for > 0.50€ (mudança de margem)
+const objetivo = (isSaved && Math.abs(storedObjetivo - objetivoTeorico) < 0.5)
+  ? storedObjetivo
+  : objetivoTeorico;
 
-  // ── 4. LUCRO REAL ────────────────────────────────────────────
-  const lucroReal = faturacaoRealCalculada - totalCost;
+// ── 3. DOSES E FATURAÇÃO (COM QUEBRA REAL) ───────────────────
+const dosesTotais = sellPrice > 0.01 ? objetivo / sellPrice : 0;
 
-  // Uber: Comissão sobre o que foi vendido
-  const effectiveDelivery = Math.min(deliveryCount, dosesVendidasEfetivas);
-  const uberCommission = effectiveDelivery * sellPrice * uberRate;
+// A QUEBRA ATUA AQUI: Só vendes o que sobra das doses produzidas
+const dosesVendidasEfetivas = dosesTotais * (1 - lossRate);
+const faturacaoRealCalculada = dosesVendidasEfetivas * sellPrice;
 
-  // ── 5. INDICADORES FINAIS ────────────────────────────────────
-  const nominalProfit = dosesTotais > 0.01 ? lucroReal / dosesTotais : 0;
-  const roi = (totalCost > 0) ? (lucroReal / totalCost) * 100 : 0;
-  const uberPrice = uberRate > 0 ? sellPrice / (1 - uberRate) : sellPrice;
+// ── 4. LUCRO REAL (O QUE VAI PARA O DASHBOARD) ───────────────
+// O lucroReal agora abate o custo total da faturação que realmente aconteceu
+const lucroReal = faturacaoRealCalculada - totalCost;
 
-  return {
-    totalCost, objetivo, lucroReal, faturacao: faturacaoRealCalculada,
-    doses: dosesTotais, effectiveDelivery, ivaIngredientes,
-    ivaEnergy: typeof ivaEnergy !== 'undefined' ? ivaEnergy : 0,
-    ivaFryer: typeof ivaFryer !== 'undefined' ? ivaFryer : 0,
-    nominalProfit, uberPrice, targetProfit, roi,
-    fryerCostTotal: typeof fryerCost !== 'undefined' ? fryerCost : 0,
-    energyCostTotal: typeof energyCostVal !== 'undefined' ? energyCostVal : 0
-  } as any;
+// Ponto de referência para o Semáforo Laranja
+const lucroOriginal = isSaved ? (storedObjetivo - totalCost) : lucroReal;
+
+// Uber: Comissão sobre as doses efetivamente vendidas
+const effectiveDelivery = Math.min(deliveryCount, dosesVendidasEfetivas);
+const uberCommission = effectiveDelivery * sellPrice * uberRate;
+
+// ── 5. INDICADORES FINAIS ───────────────────────────
+const nominalProfit = dosesTotais > 0.01 ? lucroReal / dosesTotais : 0;
+const roi = (totalCost > 0 && lucroReal !== 0) ? (lucroReal / totalCost) * 100 : 0;
+const uberPrice = uberRate > 0 ? sellPrice / (1 - uberRate) : sellPrice;
+
+return {
+  totalCost,
+  objetivo,
+  lucroReal,
+  faturacao: faturacaoRealCalculada,
+  doses: dosesTotais,
+  effectiveDelivery,
+  ivaIngredientes,
+  ivaEnergy: typeof ivaEnergy !== 'undefined' ? ivaEnergy : 0,
+  ivaFryer: typeof ivaFryer !== 'undefined' ? ivaFryer : 0,
+  nominalProfit,
+  uberPrice,
+  targetProfit,
+  roi,
+  fryerCostTotal: typeof fryerCost !== 'undefined' ? fryerCost : 0,
+  energyCostTotal: typeof energyCostVal !== 'undefined' ? energyCostVal : 0
+} as any;
 }
 
-// ── SEMÁFORO ────────────────────────────────────────────────
+// ── SEMÁFORO (DASHBOARD) ────────────────────────────────────
 function computeSemaphore(r: SavedRecipe): "red" | "orange" | "green" {
-  const lucro = r.profit ?? 0;
-  const obj = r.objetivo ?? 0;
-  const custo = r.totalCost ?? 0;
-  const lucroAlvo = obj - custo;
-  if (lucro < 0) return "red";
-  if (lucro < (lucroAlvo - 0.05)) return "orange";
-  return "green";
+const lucro = r.profit || 0;
+const obj = r.objetivo || 0;
+const custo = r.totalCost || 0;
+const lucroAlvo = obj - custo;
+
+// 1. Vermelho: Se houver prejuízo real (lucro < 0)
+if (lucro < 0) return "red";
+
+// 2. Laranja: Se o lucro desceu (Armazém subiu ou Quebra aumentou)
+if (lucro < (lucroAlvo - 0.05)) {
+  return "orange";
+}
+
+// 3. Verde: Estás a cumprir ou superar a meta
+return "green";
 }
 
 // ── VIGILANTE DO ARMAZÉM ────────────────────────────────────
 function recomputeIngredientCostFromWarehouse(ingredients: Ingredient[], warehouse: WarehouseItem[]): number {
-  let total = 0;
-  for (const ing of ingredients) {
-    if (!ing.name) continue;
-    const wItem = warehouse.find((w) => w.name.trim().toLowerCase() === ing.name.trim().toLowerCase());
-    const price = wItem ? wItem.price : (ing.price || 0);
-    const rawIva = wItem ? wItem.iva : (ing.iva || 0);
-    const iva = rawIva >= 1 ? rawIva / 100 : rawIva;
-    const unitPrice = ing.unit === "DZ" ? price / 12 : price;
-    total += (ing.qty || 0) * unitPrice * (1 + iva);
-  }
-  return total;
+let total = 0;
+for (const ing of ingredients) {
+  if (!ing.name) continue;
+  const wItem = warehouse.find((w) => w.name.trim().toLowerCase() === ing.name.trim().toLowerCase());
+  const price = wItem ? wItem.price : (ing.price || 0);
+  const rawIva = wItem ? wItem.iva : (ing.iva || 0);
+  const iva = rawIva >= 1 ? rawIva / 100 : rawIva;
+  const unitPrice = ing.unit === "DZ" ? price / 12 : price;
+  total += (ing.qty || 0) * unitPrice * (1 + iva);
+}
+return total;
 }
 
 function computeCostAlerts(activeRecipes: SavedRecipe[], _warehouse: WarehouseItem[], acknowledgedKeys: Set<string>): CostAlert[] {
   const alerts: CostAlert[] = [];
+  
   for (const r of activeRecipes) {
-    if (acknowledgedKeys.has(r.key) || !r.ingredients?.length || !r.objetivo) continue;
-    if ((r.profit ?? 0) < 0) {
+    if (acknowledgedKeys.has(r.key)) continue;
+    
+    // 1. Só nos importamos com receitas que têm ingredientes e um objetivo definido
+    if (!r.ingredients?.length || !r.objetivo) continue;
+
+    // 2. O lucro real que o dashboard está a calcular agora
+    const lucroAtual = r.profit; 
+
+    // 🟢 A REGRA DE OURO DO CHEF:
+    // Só dispara alerta se o lucro for negativo (estás a perder dinheiro)
+    // ou se o lucro caiu drasticamente abaixo de zero.
+    const isLosingMoney = lucroAtual < 0;
+
+    if (isLosingMoney) {
+      // Como não queremos ser "chato", usamos um custo base para comparação
       const marginRate = Math.min((r.margin || 0) / 100, 0.99);
-      alerts.push({ recipeKey: r.key, recipeName: r.name, oldCost: r.objetivo * (1 - marginRate), newCost: r.totalCost || 0 });
+      const originalTotalCost = r.objetivo * (1 - marginRate);
+
+      alerts.push({ 
+        recipeKey: r.key, 
+        recipeName: r.name, 
+        oldCost: originalTotalCost, 
+        newCost: r.totalCost 
+      });
     }
   }
   return alerts;
+}
+
+// ── Utils ──────────────────────────────────────────────────────────────────
+function newId() { return "ID_" + Date.now() + Math.floor(Math.random() * 1000); }
+function fmtDate(iso: string) {
+  try { const d = new Date(iso); return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`; }
+  catch { return iso.slice(0, 10); }
+}
+
+const STORAGE_PREFIX = "CHEFV2_";
+function saveLS(key: string, data: unknown) { try { localStorage.setItem(key, JSON.stringify(data)); } catch {} }
+function loadLS<T>(key: string): T | null { try { const r = localStorage.getItem(key); return r ? JSON.parse(r) as T : null; } catch { return null; } }
+
+function getAllRecipes(): SavedRecipe[] {
+  const result: SavedRecipe[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(STORAGE_PREFIX + "REC_")) {
+      const d = loadLS<SavedRecipe>(k);
+      if (d) result.push({ active: false, ...d, key: k });
+    }
+  }
+  return result.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────

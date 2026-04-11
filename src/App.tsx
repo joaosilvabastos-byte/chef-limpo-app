@@ -335,18 +335,18 @@ function calcRecipe(
   }
 
   // ── 3. DOSES E FATURAÇÃO (COM QUEBRA REAL) ───────────────────
-  const dosesTotais = sellPrice > 0.01 ? objetivo / sellPrice : 0;
+  const dosesTotais = sellPrice > 0.01 ? (objetivo || 0) / sellPrice : 0;
   const dosesVendidasEfetivas = dosesTotais * (1 - lossRate);
   const faturacaoRealCalculada = dosesVendidasEfetivas * sellPrice;
 
-  // ── 4. LUCRO REAL (O QUE VAI PARA O DASHBOARD) ───────────────
+  // ── 4. LUCRO REAL ────────────────────────────────────────────
   const lucroReal = faturacaoRealCalculada - totalCost;
-  const lucroOriginal = isSaved ? (storedObjetivo - totalCost) : lucroReal;
+  const lucroOriginal = isSaved ? ((storedObjetivo || 0) - totalCost) : lucroReal;
 
   const effectiveDelivery = Math.min(deliveryCount, dosesVendidasEfetivas);
   const uberCommission = effectiveDelivery * sellPrice * uberRate;
 
-  // ── 5. INDICADORES FINAIS ───────────────────────────
+  // ── 5. INDICADORES FINAIS ────────────────────────────────────
   const nominalProfit = dosesTotais > 0.01 ? lucroReal / dosesTotais : 0;
   const roi = (totalCost > 0) ? (lucroReal / totalCost) * 100 : 0;
   const uberPrice = uberRate > 0 ? sellPrice / (1 - uberRate) : sellPrice;
@@ -362,7 +362,7 @@ function calcRecipe(
   } as any;
 }
 
-// ── SEMÁFORO (DASHBOARD) ────────────────────────────────────
+// ── SEMÁFORO ────────────────────────────────────────────────
 function computeSemaphore(r: SavedRecipe): "red" | "orange" | "green" {
   const lucro = r.profit ?? 0;
   const obj = r.objetivo ?? 0;
@@ -374,7 +374,7 @@ function computeSemaphore(r: SavedRecipe): "red" | "orange" | "green" {
   return "green";
 }
 
-// ── VIGILANTE DO ARMAZÉM ────────────────────────────────────
+// ── VIGILANTE ───────────────────────────────────────────────
 function recomputeIngredientCostFromWarehouse(ingredients: Ingredient[], warehouse: WarehouseItem[]): number {
   let total = 0;
   for (const ing of ingredients) {
@@ -393,12 +393,14 @@ function computeCostAlerts(activeRecipes: SavedRecipe[], _warehouse: WarehouseIt
   const alerts: CostAlert[] = [];
   for (const r of activeRecipes) {
     if (acknowledgedKeys.has(r.key) || !r.ingredients?.length || !r.objetivo) continue;
-    
-    const lucroAtual = r.profit ?? 0;
-    if (lucroAtual < 0) {
+    if ((r.profit ?? 0) < 0) {
       const marginRate = Math.min((r.margin || 0) / 100, 0.99);
-      const originalTotalCost = r.objetivo * (1 - marginRate);
-      alerts.push({ recipeKey: r.key, recipeName: r.name, oldCost: originalTotalCost, newCost: r.totalCost || 0 });
+      alerts.push({ 
+        recipeKey: r.key, 
+        recipeName: r.name, 
+        oldCost: r.objetivo * (1 - marginRate), 
+        newCost: r.totalCost || 0 
+      });
     }
   }
   return alerts;

@@ -2,16 +2,9 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import jsPDF from "jspdf";
 import "./index.css";
 
-
-
 // ── i18n ────────────────────────────────────────────────────────────────────
 type Lang = "PT" | "ES" | "FR" | "EN";
-const LANG_FLAGS: Record<Lang, string> = { 
-  PT: "🇵🇹", 
-  ES: "🇪🇸", 
-  FR: "🇫🇷", 
-  EN: "ᴇɴ"  // <── Copia este "ᴇɴ" daqui
-};
+const LANG_FLAGS: Record<Lang, string> = { PT: "🇵🇹", ES: "🇪🇸", FR: "🇫🇷", EN: "EN" };
 
 const TR: Record<Lang, Record<string, string>> = {
   PT: {
@@ -39,7 +32,7 @@ const TR: Record<Lang, Record<string, string>> = {
     deliveryPlatforms: "DELIVERY", nominalProfit: "Lucro Nominal / Dose",
     ivaIngredients: "IVA Ingredientes", ivaEnergy: "IVA Energia", ivaFryer: "IVA Fritadeira",
     ivaSubtotal: "Sub-Total IVA", ivaTotal: "IVA TOTAL",
-    exportPdf: "📄 Exportar Receitas PDF", exportWarehousePdf: "📦 Exportar Armazém PDF", exportIvaPdf: "📊 Exportar Resumo IVA", exportJson: "📤 Exportar Armazém", importJson: "📥 Importar Armazém",
+    exportPdf: "📄 Exportar Receitas PDF", exportWarehousePdf: "📦 Exportar Armazém PDF", exportIvaPdf: "📊 Exportar Resumo IVA", exportJson: "📤 Exportar JSON", importJson: "📥 Importar JSON",
     deleteAll: "🗑️ Apagar todas as receitas",
     deleteAllConfirm: "Apagar TODAS as receitas? Esta ação não pode ser desfeita.", cancelBtn: "Cancelar", apagar: "Apagar",
     deleteRecipeConfirm: "Apagar esta receita?",
@@ -52,11 +45,9 @@ const TR: Record<Lang, Record<string, string>> = {
     openRecipe: "ABRIR", versionInfo: "Versão 3.0 PRO",
     notInWarehouse: "Não encontrado no Armazém",
     activeOn: "ON", activeOff: "OFF",
-    perDose: "/ receita",
+    perDose: "/ dose",
     rankingProfit: "Lucro Absoluto",
     noActiveRecipes: "Nenhuma receita ativa.",
-    data: "Dados",
-    
   },
   ES: {
     appName: "CHEF MARGIN PRO", appSub: "Gestión de costes y márgenes",
@@ -83,7 +74,7 @@ const TR: Record<Lang, Record<string, string>> = {
     deliveryPlatforms: "DELIVERY", nominalProfit: "Beneficio Nominal / Ración",
     ivaIngredients: "IVA Ingredientes", ivaEnergy: "IVA Energía", ivaFryer: "IVA Freidora",
     ivaSubtotal: "Sub-Total IVA", ivaTotal: "IVA TOTAL",
-    exportPdf: "📄 Exportar Recetas PDF", exportWarehousePdf: "📦 Exportar Almacén PDF", exportIvaPdf: "📊 Exportar Resumen IVA", exportJson: "📤 Exportar Almacén", importJson: "📥 Importar Almacén",
+    exportPdf: "📄 Exportar Recetas PDF", exportWarehousePdf: "📦 Exportar Almacén PDF", exportIvaPdf: "📊 Exportar Resumen IVA", exportJson: "📤 Exportar JSON", importJson: "📥 Importar JSON",
     deleteAll: "🗑️ Borrar todas las recetas",
     deleteAllConfirm: "¿Borrar TODAS las recetas? Esta acción no se puede deshacer.", cancelBtn: "Cancelar", apagar: "Borrar",
     deleteRecipeConfirm: "¿Borrar esta receta?",
@@ -96,10 +87,9 @@ const TR: Record<Lang, Record<string, string>> = {
     openRecipe: "ABRIR", versionInfo: "Versión 3.0 PRO",
     notInWarehouse: "No encontrado en Almacén",
     activeOn: "ON", activeOff: "OFF",
-    perDose: "/ receta",
+    perDose: "/ ración",
     rankingProfit: "Beneficio Absoluto",
     noActiveRecipes: "Ninguna receta activa.",
-    data: "Datos",
   },
   FR: {
     appName: "CHEF MARGIN PRO", appSub: "Gestion des coûts et marges",
@@ -126,7 +116,7 @@ const TR: Record<Lang, Record<string, string>> = {
     deliveryPlatforms: "LIVRAISON", nominalProfit: "Profit Nominal / Portion",
     ivaIngredients: "TVA Ingrédients", ivaEnergy: "TVA Énergie", ivaFryer: "TVA Friteuse",
     ivaSubtotal: "Sous-Total TVA", ivaTotal: "TVA TOTALE",
-    exportPdf: "📄 Exporter Recettes PDF", exportWarehousePdf: "📦 Exporter Stock PDF", exportIvaPdf: "📊 Exporter Résumé TVA", exportJson: "📤 Exporter le Stock", importJson: "📥 Importer le Stock",
+    exportPdf: "📄 Exporter Recettes PDF", exportWarehousePdf: "📦 Exporter Stock PDF", exportIvaPdf: "📊 Exporter Résumé TVA", exportJson: "📤 Exporter JSON", importJson: "📥 Importer JSON",
     deleteAll: "🗑️ Supprimer toutes les recettes",
     deleteAllConfirm: "Supprimer TOUTES les recettes? Action irréversible.", cancelBtn: "Annuler", apagar: "Supprimer",
     deleteRecipeConfirm: "Supprimer cette recette?",
@@ -139,10 +129,9 @@ const TR: Record<Lang, Record<string, string>> = {
     openRecipe: "OUVRIR", versionInfo: "Version 3.0 PRO",
     notInWarehouse: "Introuvable dans l'entrepôt",
     activeOn: "ON", activeOff: "OFF",
-    perDose: "/ recette",
+    perDose: "/ portion",
     rankingProfit: "Profit Absolu",
     noActiveRecipes: "Aucune recette active.",
-    data: "Données",
   },
   EN: {
     appName: "CHEF MARGIN PRO", appSub: "Cost & margin management",
@@ -169,7 +158,7 @@ const TR: Record<Lang, Record<string, string>> = {
     deliveryPlatforms: "DELIVERY", nominalProfit: "Nominal Profit / Serving",
     ivaIngredients: "VAT Ingredients", ivaEnergy: "VAT Energy", ivaFryer: "VAT Fryer",
     ivaSubtotal: "VAT Sub-Total", ivaTotal: "TOTAL VAT",
-    exportPdf: "📄 Export Recipes PDF", exportWarehousePdf: "📦 Export Warehouse PDF", exportIvaPdf: "📊 Export VAT Summary", exportJson: "📤 Export Warehouse", importJson: "📥 Import Warehouse",
+    exportPdf: "📄 Export Recipes PDF", exportWarehousePdf: "📦 Export Warehouse PDF", exportIvaPdf: "📊 Export VAT Summary", exportJson: "📤 Export JSON", importJson: "📥 Import JSON",
     deleteAll: "🗑️ Delete all recipes",
     deleteAllConfirm: "Delete ALL recipes? This cannot be undone.", cancelBtn: "Cancel", apagar: "Delete",
     deleteRecipeConfirm: "Delete this recipe?",
@@ -182,10 +171,9 @@ const TR: Record<Lang, Record<string, string>> = {
     openRecipe: "OPEN", versionInfo: "Version 3.0 PRO",
     notInWarehouse: "Not found in Warehouse",
     activeOn: "ON", activeOff: "OFF",
-    perDose: "/ recipe",
+    perDose: "/ serving",
     rankingProfit: "Absolute Profit",
     noActiveRecipes: "No active recipes.",
-    data: "Data"
   },
 };
 
@@ -218,8 +206,8 @@ interface SavedRecipe {
   margin: number;
   totalCost: number;
   profit: number;
-  // A linha 'efficiency: number;' foi removida! ✅
-  objetivo?: number;
+  efficiency: number;
+  objetivo?: number;   // locked at save time — never changes with warehouse prices
   doses?: number;
   active?: boolean;
   ingredients: Ingredient[];
@@ -241,21 +229,10 @@ interface EnergyData {
 }
 
 interface CalcResult {
-  totalCost: number; 
-  objetivo: number; 
-  lucroReal: number; 
-  doses: number; 
-  effectiveDelivery: number;
-  ivaIngredientes: number; 
-  ivaEnergy: number; 
-  ivaFryer: number;
-  nominalProfit: number; 
-  // A eficiência foi removida daqui! ✅
-  uberPrice: number;
-  targetProfit: number; 
-  fryerCostTotal: number; 
-  energyCostTotal: number;
-  roi: number; // Adiciona esta linha aqui!
+  totalCost: number; objetivo: number; lucroReal: number; doses: number; effectiveDelivery: number;
+  ivaIngredientes: number; ivaEnergy: number; ivaFryer: number;
+  nominalProfit: number; efficiency: number; uberPrice: number;
+  targetProfit: number; fryerCostTotal: number; energyCostTotal: number;
 }
 
 interface ToastItem { id: string; message: string; }
@@ -266,88 +243,118 @@ type SemaphoreState = "idle" | "green" | "orange" | "red";
 
 // ── Engine ─────────────────────────────────────────────────────────────────
 function calcRecipe(
-  ingredients: any[], 
-  margin: number, 
-  loss: number, 
-  extras: number, 
-  sellPrice: number, 
-  deliveryRate: number, 
-  deliveryCount: number, 
-  fryerCost: number, 
-  energyCostVal: number,
-  isSaved: boolean,
-  storedObjetivo: number,
-  ivaIngredientesParam: number,
-  ivaFryerParam: number,
-  ivaEnergyParam: number
-) {
-  // 1. CUSTO LÍQUIDO
-  const totalLiquido = (ingredients || []).reduce((sum, ing) => {
-    const p = Number(ing.price) || 0;
-    const q = Number(ing.qty) || 0;
-    const unitP = ing.unit === "DZ" ? p / 12 : p;
-    return sum + (q * unitP);
-  }, 0);
+  ingredients: Ingredient[], extras: number, margin: number,
+  sellPrice: number, loss: number,
+  fryer: boolean, fryerData: FryerData, fryerOilItem: WarehouseItem | undefined,
+  energy: boolean, energyData: EnergyData,
+  deliveryCount: number, deliveryRate: number
+): CalcResult {
+  let totalBase = 0, ivaIngredientes = 0;
+  ingredients.forEach((ing) => {
+    const qty = ing.qty || 0, price = ing.price || 0;
+    const unitPrice = ing.unit === "DZ" ? price / 12 : price;
+    const itemBase = qty * unitPrice;
+    const iva = ing.iva >= 1 ? ing.iva / 100 : ing.iva;
+    ivaIngredientes += itemBase * iva;
+    totalBase += itemBase * (1 + iva);
+  });
 
-  const outros = (Number(fryerCost) || 0) + (Number(energyCostVal) || 0) + (Number(extras) || 0);
-  const subTotal = totalLiquido + outros;
+  let fryerCost = 0, ivaFryer = 0;
+  if (fryer) {
+    const oilPricePerL = fryerOilItem ? fryerOilItem.price : 1.25;
+    const oilIva = fryerOilItem ? (fryerOilItem.iva >= 1 ? fryerOilItem.iva / 100 : fryerOilItem.iva) : 0.23;
+    const uses = Math.max(fryerData.uses || 1, 1);
+    const elec = ((fryerData.watts || 0) / 1000) * ((fryerData.time || 0) / 60) * 0.22;
+    const oilBase = (oilPricePerL * (fryerData.oilLiters || 0)) / uses;
+    const base = elec + oilBase;
+    ivaFryer = base * oilIva;
+    fryerCost = base * (1 + oilIva);
+  }
 
-  // 2. IVA (10€ + 23%)
-  const taxaIva = (Number(ingredients?.[0]?.iva) || 23) / 100;
-  const valorIva = subTotal * taxaIva;
-  const totalCost = subTotal + valorIva;
+  let energyCostVal = 0, ivaEnergy = 0;
+  if (energy) {
+    const { cost, power, time, burners, type, iva } = energyData;
+    let eBase = 0;
+    if (type === "Eletricidade") eBase = ((power * time) / 60 / 1000) * cost;
+    else if (type === "Gás") eBase = ((power * (burners || 1) * time) / 60) * cost;
+    else eBase = power * cost;
+    const eIva = iva >= 1 ? iva / 100 : iva;
+    ivaEnergy = eBase * eIva;
+    energyCostVal = eBase * (1 + eIva);
+  }
 
-  // 3. OBJETIVO (Sem travas, para a margem funcionar)
-  const marginRate = Math.min((Number(margin) || 0) / 100, 0.99);
+  // ── Custo Total = soma real (Quebra NÃO entra aqui) ────────────────────────
+  const totalCost = totalBase + fryerCost + energyCostVal + (extras || 0);
+
+  // ── Margem e taxas ──────────────────────────────────────────────────────────
+  const marginRate = Math.min((margin || 0) / 100, 0.99);
+  const lossRate   = Math.min((loss   || 0) / 100, 0.99);
+  const uberRate   = Math.min((deliveryRate || 0), 0.99);
+
+  // ── Objetivo: receita mínima para cobrir custo + margem (base sem Uber e sem Quebra)
+  // A compensação Uber é feita pelo uberPrice; a Quebra vai só no lucroReal
   const objetivo = totalCost / Math.max(1 - marginRate, 0.01);
 
-  // 4. LUCRO E DOSES
-  const dosesTotais = Number(sellPrice) > 0.01 ? objetivo / Number(sellPrice) : 0;
-  const faturacaoReal = dosesTotais > 0 
-    ? (dosesTotais * (1 - (Number(loss) / 100))) * Number(sellPrice) 
-    : objetivo;
-  const lucroReal = faturacaoReal - totalCost;
+  // ── Doses: objetivo / preço — número EXATO, sem arredondamento ─────────────
+  // Revenue = objetivo (sempre fixo). Doses é só informativo para o chef.
+  const doses = sellPrice > 0.01 ? objetivo / sellPrice : 0;
+  const effectiveDelivery = sellPrice > 0.01 ? Math.min(deliveryCount, doses) : 0;
 
-  // 5. O RETORNO "BLINDADO" (Nomes exatos para o Dashboard não crashar)
-  return {
-    totalCost: Number(totalCost.toFixed(2)) || 0,
-    objetivo: Number(objetivo.toFixed(2)) || 0,
-    lucroReal: Number(lucroReal.toFixed(2)) || 0,
-    faturacao: Number(faturacaoReal.toFixed(2)) || 0,
-    doses: Number(dosesTotais.toFixed(2)) || 0,
-    ivaIngredientes: Number(valorIva.toFixed(2)) || 0,
-    ivaFryer: Number(ivaFryerParam) || 0,
-    ivaEnergy: Number(ivaEnergyParam) || 0,
-    nominalProfit: dosesTotais > 0 ? lucroReal / dosesTotais : 0,
-    roi: totalCost > 0 ? (lucroReal / totalCost) * 100 : 0,
-    uberPrice: Number(sellPrice) / (1 - (Number(deliveryRate) / 100 || 0)),
-    targetProfit: objetivo - totalCost,
-    fryerCostTotal: Number(fryerCost) || 0,
-    energyCostTotal: Number(energyCostVal) || 0,
-    effectiveDelivery: Number(deliveryCount) || 0
-  };
+  // ── Receita = objetivo (fixa pela margem definida) — nunca inflada por arredondamentos
+  // Comissão Uber: nº de doses entregues × preço × taxa
+  const uberCommission = effectiveDelivery * sellPrice * uberRate;
+  // Quebra: % sobre a receita-objetivo (prejuízo absorvido pelo chef)
+  const lossAmount = objetivo * lossRate;
+
+  // ── Lucro Real = Objetivo − Custo Total − Comissão Uber − Quebra ───────────
+  // Se ainda não há preço de venda: lucro = 0 (sem números negativos enquanto se monta)
+  const lucroReal = sellPrice > 0.01 && totalCost > 0
+    ? objetivo - totalCost - uberCommission - lossAmount
+    : 0;
+
+  // ── Lucro Nominal por dose (referência unitária) ────────────────────────────
+  const nominalProfit = doses > 0 && totalCost > 0 ? (objetivo - totalCost) / doses : 0;
+
+  // ── Eficiência e preços ─────────────────────────────────────────────────────
+  const roi        = totalCost > 0 ? lucroReal / totalCost : 0;
+  const efficiency = Math.min(100, Math.max(0, Math.round(roi * 100)));
+  // Preço sugerido para Uber: o que cobrar ao cliente para manter margem líquida
+  const uberPrice  = uberRate > 0 ? sellPrice / (1 - uberRate) : sellPrice;
+  // Lucro alvo (referência para semáforo)
+  const targetProfit = totalCost > 0 ? totalCost * (marginRate / (1 - marginRate)) : 0;
+
+  return { totalCost, objetivo, lucroReal, doses, effectiveDelivery, ivaIngredientes, ivaEnergy, ivaFryer, nominalProfit, efficiency, uberPrice, targetProfit, fryerCostTotal: fryerCost, energyCostTotal: energyCostVal };
 }
 
-// ── SEMÁFORO (DASHBOARD) ────────────────────────────────────
-function computeSemaphore(r: SavedRecipe): "red" | "orange" | "green" {
-  const lucro = r.profit ?? 0;
-  const obj = r.objetivo ?? 0;
-  const custo = r.totalCost ?? 0;
-  const lucroAlvo = obj - custo;
-  if (lucro < 0) return "red";
-  if (lucro < (lucroAlvo - 0.05)) return "orange";
-  return "green";
+// ── Semaphore logic ────────────────────────────────────────────────────────
+// GREEN  : lucroReal >= lucroObjetivo (target met)
+// ORANGE : lucroReal between 90% and 100% of target (within 10% tolerance)
+// RED    : lucroReal < 90% of target OR lucroReal < 0 (impossible to sustain)
+function computeSemaphore(activeRecipes: SavedRecipe[]): SemaphoreState {
+  if (activeRecipes.length === 0) return "idle";
+  let worst: SemaphoreState = "green";
+  for (const r of activeRecipes) {
+    if (!r.sellPrice || r.sellPrice <= 0) continue;
+    if (r.profit < 0) return "red"; // immediate red on real loss
+    const marginRate = Math.min((r.margin || 0) / 100, 0.99);
+    const lucroObjetivo = marginRate > 0 && r.totalCost > 0
+      ? r.totalCost * (marginRate / (1 - marginRate)) : 0;
+    if (lucroObjetivo > 0) {
+      if (r.profit < lucroObjetivo * 0.9) return "red"; // >10% below target → red
+      if (r.profit < lucroObjetivo && worst === "green") worst = "orange"; // up to 10% below → orange
+    }
+  }
+  return worst;
 }
 
-// ── VIGILANTE DO ARMAZÉM ────────────────────────────────────
+// ── Vigilante: re-price ingredients from current warehouse ─────────────────
 function recomputeIngredientCostFromWarehouse(ingredients: Ingredient[], warehouse: WarehouseItem[]): number {
   let total = 0;
   for (const ing of ingredients) {
     if (!ing.name) continue;
     const wItem = warehouse.find((w) => w.name.trim().toLowerCase() === ing.name.trim().toLowerCase());
-    const price = wItem ? wItem.price : (ing.price || 0);
-    const rawIva = wItem ? wItem.iva : (ing.iva || 0);
-    const iva = rawIva >= 1 ? rawIva / 100 : rawIva;
+    const price = wItem ? wItem.price : ing.price;
+    const iva = wItem ? (wItem.iva >= 1 ? wItem.iva / 100 : wItem.iva) : (ing.iva >= 1 ? ing.iva / 100 : ing.iva);
     const unitPrice = ing.unit === "DZ" ? price / 12 : price;
     total += (ing.qty || 0) * unitPrice * (1 + iva);
   }
@@ -355,24 +362,30 @@ function recomputeIngredientCostFromWarehouse(ingredients: Ingredient[], warehou
 }
 
 function computeCostAlerts(activeRecipes: SavedRecipe[], _warehouse: WarehouseItem[], acknowledgedKeys: Set<string>): CostAlert[] {
+  // After warehouse sync, r.ingredients already holds updated prices, so we cannot
+  // compare ingredient prices against themselves.  Instead we recover the original
+  // totalCost from the LOCKED objetivo (stored at save time) and compare it against
+  // the current totalCost which was updated by the sync.
   const alerts: CostAlert[] = [];
   for (const r of activeRecipes) {
-    if (acknowledgedKeys.has(r.key) || !r.ingredients?.length || !r.objetivo) continue;
-    if ((r.profit ?? 0) < 0) {
-      const marginRate = Math.min((r.margin || 0) / 100, 0.99);
-      alerts.push({ recipeKey: r.key, recipeName: r.name, oldCost: r.objetivo * (1 - marginRate), newCost: r.totalCost || 0 });
+    if (acknowledgedKeys.has(r.key)) continue;
+    if (!r.ingredients?.length || !r.objetivo) continue;
+    const marginRate = Math.min((r.margin || 0) / 100, 0.99);
+    // originalTotalCost = objetivo * (1 − marginRate)  — exact inverse of save-time formula
+    const originalTotalCost = r.objetivo * (1 - marginRate);
+    const currentTotalCost  = r.totalCost;  // updated by the warehouse sync
+    if (originalTotalCost > 0 && currentTotalCost > originalTotalCost * 1.02) {
+      alerts.push({ recipeKey: r.key, recipeName: r.name, oldCost: originalTotalCost, newCost: currentTotalCost });
     }
   }
   return alerts;
 }
 
-// ── Utils ───────────────────────────────────────────────────
+// ── Utils ──────────────────────────────────────────────────────────────────
 function newId() { return "ID_" + Date.now() + Math.floor(Math.random() * 1000); }
 function fmtDate(iso: string) {
-  try { 
-    const d = new Date(iso); 
-    return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`; 
-  } catch { return iso.slice(0, 10); }
+  try { const d = new Date(iso); return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`; }
+  catch { return iso.slice(0, 10); }
 }
 
 const STORAGE_PREFIX = "CHEFV2_";
@@ -391,6 +404,7 @@ function getAllRecipes(): SavedRecipe[] {
   return result.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+// ── Toast ─────────────────────────────────────────────────────────────────
 function ToastContainer({ toasts }: { toasts: ToastItem[] }) {
   return (
     <div className="toast-container">
@@ -400,8 +414,6 @@ function ToastContainer({ toasts }: { toasts: ToastItem[] }) {
     </div>
   );
 }
-
-// ── FIM DAS UTILIDADES (Garanta que a próxima linha é o export default function App() { )
 
 // ── PRO Modal ─────────────────────────────────────────────────────────────
 function ProModal({ onActivate, onClose, t }: { onActivate: () => void; onClose: () => void; t: Record<string, string> }) {
@@ -520,12 +532,9 @@ function DashboardSection({
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInst = useRef<{ destroy?: () => void } | null>(null);
 
- const isIdle = activeRecipes.length === 0;
-
-// ✅ REMOVIDO O Math.max(0, ...) para permitir que o prejuízo apareça!
-const totalProfit = activeRecipes.reduce((a, r) => a + (r.profit || 0), 0);
-
-const totalCost = activeRecipes.reduce((a, r) => a + (r.totalCost || 0), 0);
+  const isIdle = activeRecipes.length === 0;
+  const totalProfit = activeRecipes.reduce((a, r) => a + Math.max(0, r.profit), 0);
+  const totalCost = activeRecipes.reduce((a, r) => a + r.totalCost, 0);
 
   const activeColor = semaphore === "green" ? "#22c55e" : semaphore === "orange" ? "#f97316" : semaphore === "red" ? "#ef4444" : "#22c55e";
   const bannerText = semaphore === "green" ? t.semGreen : semaphore === "orange" ? t.semOrange : semaphore === "red" ? t.semRed : "";
@@ -539,24 +548,13 @@ const totalCost = activeRecipes.reduce((a, r) => a + (r.totalCost || 0), 0);
       if (!Chart) return;
       chartInst.current?.destroy?.();
       if (!chartRef.current) return;
-
-      // 🟢 DETETAR SE É PREJUÍZO
-      const isNegative = totalProfit < 0;
-
       chartInst.current = new Chart(chartRef.current, {
         type: "doughnut",
         data: {
-          // Muda o nome para "Prejuízo" na legenda se o valor for negativo
-          labels: [isNegative ? "Prejuízo" : t.realProfit, t.totalCost],
+          labels: [t.realProfit, t.totalCost],
           datasets: [{
-            // ✅ Math.abs() permite ao gráfico desenhar a fatia do prejuízo
-            data: isIdle ? [1, 1] : [Math.abs(totalProfit) || 0.01, totalCost || 0.01],
-            
-            // ✅ Se for negativo, pinta de Vermelho (#ef4444). Se for lucro, usa a tua activeColor
-            backgroundColor: isIdle 
-              ? ["#6b7280", "#4b5563"] 
-              : [isNegative ? "#ef4444" : activeColor, "#c4a778"],
-            
+            data: isIdle ? [1, 1] : [totalProfit || 0.01, totalCost || 0.01],
+            backgroundColor: isIdle ? ["#6b7280", "#4b5563"] : [activeColor, "#c4a778"],
             borderColor: "#1a0b2e",
             borderWidth: 5,
           }],
@@ -567,46 +565,26 @@ const totalCost = activeRecipes.reduce((a, r) => a + (r.totalCost || 0), 0);
             legend: { display: false },
             tooltip: {
               enabled: !isIdle,
-              callbacks: { 
-                // ✅ Ajuste no Tooltip para mostrar o sinal de menos se for prejuízo
-                label: (ctx: { label: string; raw: unknown }) => {
-                  const val = isNegative && ctx.label === "Prejuízo" ? -Number(ctx.raw) : Number(ctx.raw);
-                  return ` ${ctx.label}: ${fmt(val)}`;
-                } 
-              },
+              callbacks: { label: (ctx: { label: string; raw: unknown }) => ` ${ctx.label}: ${fmt(Number(ctx.raw))}` },
             },
           },
         },
       });
     };
-
     if (!(window as unknown as Record<string, unknown>).Chart) {
       const s = document.createElement("script");
       s.src = "https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js";
-      s.onload = render; 
-      document.head.appendChild(s);
-    } else { 
-      render(); 
-    }
-
+      s.onload = render; document.head.appendChild(s);
+    } else { render(); }
     return () => { chartInst.current?.destroy?.(); };
   }, [activeRecipes, semaphore, totalProfit, totalCost, t, fmt, activeColor, isIdle]);
 
   return (
     <div className="dashboard-root">
-      {/* LOGO GRANDE DO AMIGO */}
-      <div className="dash-logo-wrap" style={{ textAlign: 'center', marginBottom: '25px' }}>
-        <img 
-          src="./LOGO.png" 
-          alt="Chef Margin Pro" 
-          style={{ 
-            width: '750px', 
-            height: 'auto', 
-            display: 'block', 
-            margin: '0 auto 10px' 
-          }} 
-        />
-        
+      {/* Giant Logo */}
+      <div className="dash-logo-wrap">
+        <div className="dash-logo">CHEF MARGIN PRO</div>
+        <div className="dash-sub">{t.appSub}</div>
       </div>
 
       {/* ── Priority alert hierarchy: ONE alert at a time ──────────────────── */}
@@ -730,10 +708,11 @@ export default function App() {
   const [savedRecipes, setSavedRecipes] = useState<SavedRecipe[]>(() => getAllRecipes());
   const [recipesTab, setRecipesTab] = useState<"all" | "ranking">("all");
 
- const fryerOilItem = useMemo(() => {
-  // Procura especificamente pelo nome exato que deste no armazém
-  return warehouseSaved.find((w) => w.name.toLowerCase() === "óleo");
-}, [warehouseSaved]);
+  // Oil item from warehouse
+  const fryerOilItem = useMemo(() =>
+    warehouseSaved.find((w) => /óleo|oleo|oil|aceite|huile|azeite/i.test(w.name)),
+    [warehouseSaved]
+  );
 
   // Active recipes (default true if field missing)
   const activeRecipes = useMemo(() =>
@@ -755,28 +734,21 @@ export default function App() {
   // Semaphore state — based on real profit, not cost alerts
   const semaphore = useMemo(() => computeSemaphore(activeRecipes), [activeRecipes]);
 
- // Ranking: top 5 pelo lucro real absoluto (já calculado na receita)
- const rankingRecipes = useMemo(() =>
-   [...savedRecipes]
-     // Filtramos para garantir que só entram receitas com custo e lucro definidos
-     .filter((r) => r.totalCost > 0 && typeof r.profit !== 'undefined')
-     // Ordenamos do maior lucro para o menor
-     .sort((a, b) => b.profit - a.profit)
-     .slice(0, 5),
-   [savedRecipes]
- );
+  // Ranking: top 5 by absolute profit (sellPrice - totalCost)
+  const rankingRecipes = useMemo(() =>
+    [...savedRecipes]
+      .filter((r) => r.sellPrice > 0 && r.totalCost > 0)
+      .sort((a, b) => (b.sellPrice - b.totalCost) - (a.sellPrice - a.totalCost))
+      .slice(0, 5),
+    [savedRecipes]
+  );
 
-  // 1. Verifica se a receita que estás a ver já existe na lista
-const existing = savedRecipes.find(r => r.name === recipeName);
-
-// 2. Calc live (COM OS TEUS NOMES REAIS)
-const calc = calcRecipe(
-  ingredients, extras, margin, sellPrice, loss,
-  fryerOn, fryerData, fryerOilItem,
-  energyOn, energyData, deliveryCount, deliveryRate,
-  !!existing,          // 🔴 Se encontrar o nome, passa TRUE
-  existing?.objetivo || 0 // 🔴 Passa o objetivo que guardaste antes
-);
+  // Calc live
+  const calc = calcRecipe(
+    ingredients, extras, margin, sellPrice, loss,
+    fryerOn, fryerData, fryerOilItem,
+    energyOn, energyData, deliveryCount, deliveryRate
+  );
 
   // ── Sync form ingredients with current warehouse prices ─────────────────────
   useEffect(() => {
@@ -789,43 +761,47 @@ const calc = calcRecipe(
   // ── Apply new warehouse to ALL saved recipes (called directly from handleSaveWarehouse)
   // objetivo stays LOCKED at the value set when the recipe was created/saved.
   // Only totalCost changes — which lowers profit and triggers the semaphore/alert.
-  // ── Apply new warehouse to ALL saved recipes ─────────────────────
-  // CORREÇÃO: O objetivo fica BLOQUEADO. Se o custo sobe, o lucro DESCE.
   const applySyncToRecipes = useCallback((newWarehouse: WarehouseItem[]) => {
-    const oilItem = newWarehouse.find(w => w.name === "Óleo" || w.name === "Azeite");
-
+    const oilItem = newWarehouse.find((w) => /óleo|oleo|oil|aceite|huile|azeite/i.test(w.name));
     setSavedRecipes((prev) => {
       const updated = prev.map((r) => {
         if (!r.ingredients?.length) return r;
-
-        // 1. Sincroniza ingredientes
+        // Reprice ingredients from the NEW warehouse
         const syncedIngs = r.ingredients.map((ing) => {
           const w = newWarehouse.find((ww) => ww.name.toLowerCase() === ing.name.toLowerCase());
           return w ? { ...ing, price: w.price, unit: w.unit, iva: w.iva } : ing;
         });
-
-        // 2. RECALCULA COM A TRAVA
+        // Compute new totalCost using the updated ingredient prices
         const recomputed = calcRecipe(
-          syncedIngs, r.extras, r.margin, r.sellPrice, r.loss,
-          r.fryer, r.fryerData, oilItem,
-          r.energy, r.energyData,
-          r.deliveryCount, r.deliveryRate,
-          true,       // 🔴 isSaved
-          r.objetivo  // 🔴 storedObjetivo
+          syncedIngs, r.extras || 0, r.margin || 0, r.sellPrice || 0, r.loss || 0,
+          r.fryer || false, r.fryerData || { oilLiters: 2, watts: 2500, time: 5, uses: 10 }, oilItem,
+          r.energy || false, r.energyData || { type: "Eletricidade", cost: 0.22, power: 2000, time: 30, iva: 0.23, burners: 1 },
+          r.deliveryCount || 0, r.deliveryRate || 0.2
         );
-
-      return {
-    ...r,
-    ingredients: syncedIngs,
-    totalCost: recomputed.totalCost,
-    profit: recomputed.lucroReal,
-    objetivo: recomputed.objetivo,
-    // A linha "efficiency: recomputed.efficiency" foi removida! ✅
-  };
-});
+        const newTotalCost = recomputed.totalCost;
+        // Locked objetivo: use saved value; fall back to deriving from the ORIGINAL totalCost
+        // (r.totalCost here is from `prev` — the state BEFORE this update — so it is correct
+        //  for the fallback only on the very first sync of a legacy recipe)
+        const lockedObjetivo = r.objetivo ?? (r.totalCost / Math.max(1 - Math.min((r.margin || 0) / 100, 0.99), 0.01));
+        // Recalculate profit with the LOCKED objetivo and NEW cost
+        const lossRate = Math.min((r.loss || 0) / 100, 0.99);
+        const uberRate = Math.min(r.deliveryRate || 0.2, 0.99);
+        const doses = r.sellPrice > 0.01 ? lockedObjetivo / r.sellPrice : 0;
+        const effectiveDel = Math.min(r.deliveryCount || 0, doses);
+        const uberCommission = effectiveDel * (r.sellPrice || 0) * uberRate;
+        const lossAmount = lockedObjetivo * lossRate;
+        const newProfit = r.sellPrice > 0.01 && newTotalCost > 0
+          ? lockedObjetivo - newTotalCost - uberCommission - lossAmount : 0;
+        const roi = newTotalCost > 0 ? newProfit / newTotalCost : 0;
+        const newEfficiency = Math.min(100, Math.max(0, Math.round(roi * 100)));
+        const result = { ...r, ingredients: syncedIngs, totalCost: newTotalCost, objetivo: lockedObjetivo, profit: newProfit, efficiency: newEfficiency };
+        saveLS(r.key, result);
+        return result;
+      });
       return updated;
     });
   }, []);
+
   // PRO gate
   const requirePro = (callback: () => void) => {
     if (isPro) { callback(); return; }
@@ -852,43 +828,26 @@ const calc = calcRecipe(
   };
 
   // Save recipe
-  // Save recipe
-const handleSaveRecipe = () => {
-  requirePro(() => {
-    const name = recipeName.trim() || "Receita " + fmtDate(new Date().toISOString());
-    const key = STORAGE_PREFIX + "REC_" + name.replace(/[\s\/\\]/g, "_");
-    const existingRecipe = savedRecipes.find((r) => r.key === key);
-
-   const data: SavedRecipe = {
-        key,
-        name,
-        date: new Date().toISOString(),
-        active: existingRecipe ? (existingRecipe.active !== false) : false,
-        sellPrice,
-        margin,
-        totalCost: calc.totalCost,
-        profit: calc.lucroReal,
-        // A linha 'efficiency: calc.efficiency' foi removida! ✅
-        objetivo: calc.objetivo, 
-        ingredients: [...ingredients],
-        extras,
-        loss,
-        fryer: fryerOn,
-        fryerData: { ...fryerData },
-        energy: energyOn,
-        energyData: { ...energyData },
-        deliveryCount,
-        deliveryRate,
+  const handleSaveRecipe = () => {
+    requirePro(() => {
+      const name = recipeName.trim() || "Receita " + fmtDate(new Date().toISOString());
+      const key = STORAGE_PREFIX + "REC_" + name.replace(/[\s\/\\]/g, "_");
+      const existingRecipe = savedRecipes.find((r) => r.key === key);
+      const data: SavedRecipe = {
+        key, name, date: new Date().toISOString(), active: existingRecipe ? (existingRecipe.active !== false) : false,
+        sellPrice, margin, totalCost: calc.totalCost, profit: calc.lucroReal, efficiency: calc.efficiency,
+        objetivo: calc.objetivo,   // locked selling target — stays fixed after warehouse price changes
+        ingredients: [...ingredients], extras, loss,
+        fryer: fryerOn, fryerData: { ...fryerData },
+        energy: energyOn, energyData: { ...energyData },
+        deliveryCount, deliveryRate,
       };
-
-    // ... resto da lógica de gravação (localStorage.setItem, etc)
-
       saveLS(key, data);
       setSavedRecipes(getAllRecipes());
       showToast(`✨ "${name}" ${t.toastSaved}`);
       clearForm();
     });
-  }; // <--- Esta chaveta e ponto e vírgula são cruciais!
+  };
 
   // Toggle recipe active/inactive
   const toggleRecipeActive = (key: string) => {
@@ -991,107 +950,54 @@ const handleSaveRecipe = () => {
 
   // Export PDF — Production Report per Recipe
   const handleExportPdf = () => {
-  const doc = new jsPDF();
-  const ivaLabel = lang === "EN" ? "VAT" : lang === "FR" ? "TVA" : "IVA";
+    const doc = new jsPDF();
+    const ivaLabel = lang === "EN" ? "VAT" : lang === "FR" ? "TVA" : "IVA";
+    savedRecipes.forEach((r, idx) => {
+      if (idx > 0) doc.addPage();
+      let y = pdfAddPageHeader(doc, 14);
+      // Title
+      doc.setFont("helvetica", "bold"); doc.setFontSize(14); doc.setTextColor(30);
+      const reportTitle = lang === "EN" ? `Production Report — ${r.name}` :
+        lang === "ES" ? `Informe de Producción — ${r.name}` :
+        lang === "FR" ? `Rapport de Production — ${r.name}` :
+        `Relatório de Produção — ${r.name}`;
+      // Truncate long recipe names for the title
+      const titleStr = reportTitle.length > 70 ? reportTitle.slice(0, 68) + "…" : reportTitle;
+      doc.text(titleStr, 14, y); y += 6;
+      doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(100);
+      doc.text(`${fmtDate(r.date)} | ${t.totalCost}: ${fmt(r.totalCost)} | ${t.objetivo}: ${fmt(r.totalCost / (1 - Math.min((r.margin || 0) / 100, 0.99)))}`, 14, y); y += 5;
+      doc.text(`${t.realProfit}: ${fmt(r.profit)} | ${lang === "PT" ? "Margem" : lang === "ES" ? "Margen" : lang === "FR" ? "Marge" : "Margin"}: ${r.margin || 0}% | Efic.: ${r.efficiency}/100`, 14, y); y += 7;
+      // Table header
+      doc.setFillColor(245, 240, 230); doc.rect(13, y - 4, 182, 6, "F");
+      y = pdfTableRow(doc, y, [t.ingredient, `${t.qty} / ${t.unit}`, `${t.totalCost} (${ivaLabel})`], true); y += 1;
+      doc.setDrawColor(196, 167, 120); doc.line(14, y - 1, 196, y - 1);
+      // Ingredient rows
+      r.ingredients?.filter((i) => i.name).forEach((ing) => {
+        if (y > 272) { doc.addPage(); y = pdfAddPageHeader(doc, 14); }
+        const iva = ing.iva >= 1 ? ing.iva / 100 : ing.iva;
+        const up = ing.unit === "DZ" ? ing.price / 12 : ing.price;
+        const lineCost = (ing.qty || 0) * up * (1 + iva);
+        y = pdfTableRow(doc, y, [ing.name, `${ing.qty} ${ing.unit}`, fmt(lineCost)]);
+      });
+      // Footer summary
+      y += 3; doc.setDrawColor(180); doc.line(14, y, 196, y); y += 4;
+      doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(30);
+      doc.text(`${t.totalCost}: ${fmt(r.totalCost)}`, 14, y);
+      doc.text(`${t.objetivo}: ${fmt(r.totalCost / (1 - Math.min((r.margin || 0) / 100, 0.99)))}`, 80, y);
+      doc.text(`${t.realProfit}: ${fmt(r.profit)}`, 155, y, { align: "right" });
+    });
+    doc.save(`ChefMarginPro_Relatorio_${new Date().toISOString().slice(0, 10)}.pdf`);
+  };
 
-  savedRecipes.forEach((r, idx) => {
-    if (idx > 0) doc.addPage();
-    
-    // 1. Cabeçalho de Página
-    let y = pdfAddPageHeader(doc, 14);
-    
-
-    // 2. Título do Relatório (Cor do Pato)
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(196, 167, 120); // O teu Dourado/Castanho
-    const reportTitle = lang === "EN" ? `Production Report — ${r.name}` :
-                        lang === "ES" ? `Informe de Producción — ${r.name}` :
-                        lang === "FR" ? `Rapport de Production — ${r.name}` :
-                        `Relatório de Produção — ${r.name}`;
-    
-    const titleStr = reportTitle.length > 60 ? reportTitle.slice(0, 58) + "…" : reportTitle;
-    doc.text(titleStr, 14, y); 
-    y += 8;
-
-    // 3. Info Bar (Cinza suave, SEM sublinhados)
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(80);
-    doc.text(`${fmtDate(r.date)} | ${t.totalCost}: ${fmt(r.totalCost)} | ${t.objetivo}: ${fmt(r.totalCost / (1 - Math.min((r.margin || 0) / 100, 0.99)))}`, 14, y);
-    y += 5;
-    doc.text(`${t.realProfit}: ${fmt(r.profit)} | ${lang === "PT" ? "Margem" : lang === "ES" ? "Margen" : lang === "FR" ? "Marge" : "Margin"}: ${r.margin || 0}%`, 14, y);
-    y += 10;
-
-    // 4. Tabela de Ingredientes (Design Clean)
-    // Fundo do cabeçalho da tabela
-    doc.setFillColor(248, 245, 240); 
-    doc.rect(13, y - 5, 184, 7, "F");
-    
-    // Linha de destaque no topo da tabela (A "risca" agora é controlada e elegante)
-    doc.setDrawColor(196, 167, 120);
-    doc.setLineWidth(0.5);
-    doc.line(14, y - 5, 196, y - 5); 
-
-    y = pdfTableRow(doc, y, [t.ingredient, `${t.qty} / ${t.unit}`, `${t.totalCost} (${ivaLabel})`], true);
-    y += 2;
-
-    // 5. Linhas de Ingredientes
-    doc.setTextColor(40);
-    doc.setFont("helvetica", "normal");
-    doc.setLineWidth(0.1);
-    doc.setDrawColor(230); // Linhas divisórias muito claras
-
-    r.ingredients?.filter((i) => i.name).forEach((ing) => {
-  if (y > 270) { 
-    doc.addPage(); 
-    y = pdfAddPageHeader(doc, 14); 
-  }
-  
-  const iva = ing.iva >= 1 ? ing.iva / 100 : ing.iva;
-  const up = ing.unit === "DZ" ? ing.price / 12 : ing.price;
-  const lineCost = (ing.qty || 0) * up * (1 + iva);
-
-  // 🎯 1. CRIAR A "MÁSCARA" VISUAL:
-  const displayUnit = ing.unit === "DZ" ? "UN" : (ing.unit || "");
-
-  // 🎯 2. USAR O 'displayUnit' NA LINHA DA TABELA:
-  y = pdfTableRow(doc, y, [ing.name, `${ing.qty} ${displayUnit}`, fmt(lineCost)]);
-  
-  doc.line(14, y - 4, 196, y - 4);
-});
-
-    // 6. Rodapé Final (Resumo)
-    y += 5;
-    if (y > 280) { doc.addPage(); y = 20; }
-    
-    doc.setDrawColor(196, 167, 120);
-    doc.setLineWidth(0.8);
-    doc.line(14, y, 196, y); // Linha final grossa
-    
-    y += 7;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(30);
-    doc.text(`${t.totalCost}: ${fmt(r.totalCost)}`, 14, y);
-    doc.text(`${t.objetivo}: ${fmt(r.totalCost / (1 - Math.min((r.margin || 0) / 100, 0.99)))}`, 85, y);
-    doc.setTextColor(196, 167, 120);
-    doc.text(`${t.realProfit}: ${fmt(r.profit)}`, 196, y, { align: "right" });
-  });
-
-  doc.save(`ChefMarginPro_Relatorio_${new Date().toISOString().slice(0, 10)}.pdf`);
-};
-
- // Export Warehouse PDF
+  // Export Warehouse PDF
   const handleExportWarehousePdf = () => {
     const doc = new jsPDF();
     const ivaLabel = lang === "EN" ? "VAT" : lang === "FR" ? "TVA" : "IVA";
     let y = pdfAddPageHeader(doc, 14);
     const title = lang === "EN" ? "Warehouse — Full List" : lang === "ES" ? "Almacén — Lista Completa" : lang === "FR" ? "Stock — Liste Complète" : "Armazém — Lista Completa";
-    
     doc.setFont("helvetica", "bold"); doc.setFontSize(13); doc.setTextColor(30);
     doc.text(title, 14, y); y += 8;
-
+    // 4-col header: Name | Unit | Price | IVA%
     const wRow = (name: string, unit: string, price: string, iva: string, bold = false) => {
       doc.setFont("helvetica", bold ? "bold" : "normal"); doc.setFontSize(9);
       doc.setTextColor(bold ? 30 : 55);
@@ -1101,59 +1007,18 @@ const handleSaveRecipe = () => {
       doc.text(iva, 196, y, { align: "right" });
       y += 6;
     };
-
     doc.setFillColor(245, 240, 230); doc.rect(13, y - 4, 182, 6.5, "F");
     wRow(t.ingredient, t.unit, `${currency}/Base`, `${ivaLabel} %`, true);
-    doc.setDrawColor(196, 167, 120); doc.line(14, y - 4, 196, y - 4);
-
+    doc.setDrawColor(196, 167, 120); doc.line(14, y - 1, 196, y - 1);
     warehouseSaved.forEach((item) => {
       if (y > 272) { doc.addPage(); y = pdfAddPageHeader(doc, 14); }
-      const ivaVal = item.iva >= 1 ? item.iva : item.iva * 100;
-      const ivaDisplay = `${ivaVal.toFixed(0)}%`;
+      const ivaDisplay = `${((item.iva >= 1 ? item.iva : item.iva * 100)).toFixed(0)}%`;
       wRow(item.name, item.unit, fmt(item.price), ivaDisplay);
-      doc.setDrawColor(230); doc.line(14, y - 4, 196, y - 4);
+      doc.setDrawColor(230); doc.line(14, y - 1, 196, y - 1);
     });
-
     y += 2; doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(30);
     doc.text(`${warehouseSaved.length} ${lang === "EN" ? "items" : lang === "FR" ? "articles" : "artigos"}`, 14, y);
     doc.save(`ChefMarginPro_Armazem_${new Date().toISOString().slice(0, 10)}.pdf`);
-  };
-
-  // Exportar JSON (Backup)
-  const handleExportWarehouseJson = () => {
-    const dataStr = JSON.stringify(warehouseSaved, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `ChefMargin_Backup_${new Date().toISOString().slice(0, 10)}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // Importar JSON (Restaurar)
-  const handleImportWarehouseJson = (event: any) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const json = JSON.parse(e.target?.result as string);
-        if (Array.isArray(json)) {
-          setWarehouseSaved(json);
-          setWarehouseDraft(json); // Importante para atualizar a vista de edição
-          setWarehouseChanged(true);
-          alert("Armazém restaurado com sucesso! 📦");
-        }
-      } catch (err) {
-        alert("Erro ao ler o ficheiro JSON.");
-      }
-    };
-   reader.readAsText(file);
-    const target = event.target as HTMLInputElement;
-    if (target) {
-      target.value = "";
-    }
   };
 
   // Export IVA/TVA Summary PDF — full breakdown per recipe
@@ -1175,9 +1040,9 @@ const handleSaveRecipe = () => {
     doc.setFillColor(245, 240, 230); doc.rect(13, y - 4, 182, 6.5, "F");
     const ingLbl = lang === "EN" ? "Ingredientes" : t.ivaIngredients.split(" ").slice(-1)[0];
     const enLbl = lang === "EN" ? "Energy" : lang === "FR" ? "Énergie" : "Energia";
-    const frLbl = lang === "EN" ? "Fryer" : lang === "FR" ? "Friteuse" : "Fritadeira";
+    const frLbl = lang === "EN" ? "Fryer" : lang === "FR" ? "Friteuse" : "Friteuse";
     iRow(t.recipes, `${ivaLabel} ${ingLbl}`, `${ivaLabel} ${enLbl}`, `${ivaLabel} ${frLbl}`, `${ivaLabel} Total`, true);
-    doc.setDrawColor(196, 167, 120); doc.line(14, y - 3, 196, y - 3);
+    doc.setDrawColor(196, 167, 120); doc.line(14, y - 1, 196, y - 1);
     let grandTotal = 0;
     const oilItem = warehouseSaved.find((w) => /óleo|oleo|oil|aceite|huile|azeite/i.test(w.name));
     savedRecipes.forEach((r) => {
@@ -1208,7 +1073,7 @@ const handleSaveRecipe = () => {
       const total = ivaIngr + ivaEn + ivaFr;
       grandTotal += total;
       iRow(r.name, fmt(ivaIngr), fmt(ivaEn), fmt(ivaFr), fmt(total));
-      doc.setDrawColor(230); doc.line(14, y - 4, 196, y - 4);
+      doc.setDrawColor(230); doc.line(14, y - 1, 196, y - 1);
     });
     y += 3; doc.setDrawColor(180); doc.line(14, y, 196, y); y += 5;
     doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.setTextColor(30);
@@ -1235,22 +1100,12 @@ const handleSaveRecipe = () => {
     reader.onload = (ev) => {
       try {
         const data = JSON.parse(ev.target?.result as string);
-        
-        // Guarda os dados no armazenamento do telemóvel/PC
-        Object.keys(data).forEach((k) => { 
-          localStorage.setItem(k, JSON.stringify(data[k])); 
-        });
-
+        Object.keys(data).forEach((k) => { localStorage.setItem(k, JSON.stringify(data[k])); });
+        setSavedRecipes(getAllRecipes());
+        const wh = loadLS<WarehouseItem[]>(STORAGE_PREFIX + "WAREHOUSE") || [];
+        setWarehouseSaved(wh); setWarehouseDraft(wh);
         showToast("✨ Backup restaurado!");
-
-        // Aguarda 1.2 segundos para o user ver a mensagem e depois faz o refresh
-        setTimeout(() => {
-          window.location.reload();
-        }, 1200);
-
-      } catch (err) {
-        showToast("❌ Ficheiro inválido.");
-      }
+      } catch { showToast("❌ Ficheiro inválido."); }
     };
     reader.readAsText(file); e.target.value = "";
   };
@@ -1311,41 +1166,16 @@ const handleSaveRecipe = () => {
         </div>
       )}
 
-      {/* HEADER LIMPO COM SELECT DE IDIOMAS */}
-      <header className="app-header" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '0 15px', height: '60px' }}>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          
-          {/* O SELECT DE IDIOMA */}
-         <select 
-            value={lang} 
-            onChange={(e) => setLangSave(e.target.value as Lang)}
-            style={{
-              padding: '4px 6px',
-              borderRadius: '6px',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              color: '#fff',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              outline: 'none',
-              width: '55px', // Janela bem pequena agora
-              textAlign: 'center'
-            }}
-          >
-            {(["PT", "ES", "FR", "EN"] as Lang[]).map((l) => (
-              <option key={l} value={l} style={{ backgroundColor: '#fff', color: '#333' }}>
-                {/* Aqui tiramos o LANG_FLAGS para não repetir */}
-                {l}
-              </option>
-            ))}
-          </select>
-
-          {isPro && (
-            <span className="pro-badge" style={{ fontSize: '10px', padding: '4px 8px' }}>
-              {t.proActive}
-            </span>
-          )}
+      {/* HEADER */}
+      <header className="app-header">
+        <div className="app-logo-sm">CHEF MARGIN PRO</div>
+        <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+          {(["PT", "ES", "FR", "EN"] as Lang[]).map((l) => (
+            <button key={l} className={`lang-btn ${lang === l ? "active" : ""}`} onClick={() => setLangSave(l)} title={l}>
+              {LANG_FLAGS[l]}
+            </button>
+          ))}
+          {isPro && <span className="pro-badge">{t.proActive}</span>}
         </div>
       </header>
 
@@ -1402,64 +1232,45 @@ const handleSaveRecipe = () => {
             <div className="ranking-header">{t.rankingProfit} {t.perDose}</div>
             {rankingRecipes.length === 0 && <div className="empty-state"><div style={{ fontSize: 40, marginBottom: 12 }}>🏆</div><div>{t.noRecipes}</div></div>}
             {rankingRecipes.map((r, i) => {
-  // ✅ Usamos o lucro real que já calculámos (total do projeto)
-  const displayProfit = r.profit || 0; 
-  
-  return (
-    <div key={r.key} className="recipe-item ranking-item">
-      <div className="ranking-position">{["1º","2º","3º","4º","5º"][i] ?? `${i+1}º`}</div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div className="recipe-item-name">{r.name}</div>
-        <div className="recipe-item-meta">{fmtDate(r.date)}</div>
-      </div>
-      <div className="ranking-score">
-        {/* Mostra o lucro total com o sinal de + se for positivo */}
-        {displayProfit >= 0 ? "+" : ""}{fmt(displayProfit)}
-        {/* Mudamos o texto para indicar que é o lucro total do projeto */}
-        <span className="ranking-per-dose">Total</span> 
-      </div>
-    </div>
-  );
-})}
+              const absoluteProfit = r.sellPrice - r.totalCost / Math.max(r.doses ?? 1, 1);
+              return (
+                <div key={r.key} className="recipe-item ranking-item">
+                  <div className="ranking-position">{["1º","2º","3º","4º","5º"][i] ?? `${i+1}º`}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="recipe-item-name">{r.name}</div>
+                    <div className="recipe-item-meta">{fmtDate(r.date)}</div>
+                  </div>
+                  <div className="ranking-score">
+                    {absoluteProfit >= 0 ? "+" : ""}{fmt(absoluteProfit)}
+                    <span className="ranking-per-dose">{t.perDose}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </main>
 
-   {/* ── CREATE ── */}
-<main className={`app-main section-create ${activeSection === "create" ? "active" : ""}`} 
-      style={{ display: activeSection === "create" ? "flex" : "none", flexDirection: 'column' }}>
-  
-  {/* 🚧 O "ESPAÇADOR" INDESTRUTÍVEL 🚧 */}
-  <div style={{ 
-    height: '0px', 
-    minHeight: '0px', 
-    width: '100%', 
-    flexShrink: 0, 
-    backgroundColor: 'transparent' 
-  }}></div>
+      {/* ── CREATE ── */}
+      <main className={`app-main section-create ${activeSection === "create" ? "active" : ""}`}>
 
-  <input 
-    className="recipe-title-input" 
-    type="text" 
-    placeholder={t.recipeName}
-    value={recipeName} 
-    onChange={(e) => setRecipeName(e.target.value)} 
-    style={{ position: 'relative', zIndex: 20 }} 
-  />
+        <input className="recipe-title-input" type="text" placeholder={t.recipeName}
+          value={recipeName} onChange={(e) => setRecipeName(e.target.value)} />
 
-  <div className="ingredients-header-simple" style={{ position: 'relative', zIndex: 20 }}>
-    <span>{t.ingredient}</span>
-            <span style={{ textAlign: "center" }}>{t.unit}</span>
-            <span style={{ textAlign: "center" }}>{t.qty}</span>
-            <span></span>
-          </div>
+        {/* Ingredients header */}
+        <div className="ingredients-header-simple">
+          <span>{t.ingredient}</span>
+          <span style={{ textAlign: "center" }}>{t.unit}</span>
+          <span style={{ textAlign: "center" }}>{t.qty}</span>
+          <span></span>
+        </div>
 
-          {ingredients.map((ing) => (
-            <IngredientRow key={ing.id} ing={ing} warehouse={warehouseSaved}
-              onChange={(u) => setIngredients((prev) => prev.map((i) => i.id === ing.id ? u : i))}
-              onDelete={() => setIngredients((prev) => prev.filter((i) => i.id !== ing.id))}
-              t={t} />
-          ))}
+        {ingredients.map((ing) => (
+          <IngredientRow key={ing.id} ing={ing} warehouse={warehouseSaved}
+            onChange={(u) => setIngredients((prev) => prev.map((i) => i.id === ing.id ? u : i))}
+            onDelete={() => setIngredients((prev) => prev.filter((i) => i.id !== ing.id))}
+            t={t} />
+        ))}
 
         <button className="btn-add-ingredient"
           onClick={() => setIngredients((prev) => [...prev, { id: newId(), name: "", unit: "KG", price: 0, qty: 0, iva: 0.23 }])}>
@@ -1574,18 +1385,11 @@ const handleSaveRecipe = () => {
 
         {/* ENGINE */}
         <div className="engine-grid">
-         <div className="engine-box input-box">
-  <div className="engine-box-label">{t.extras} ({currency})</div>
-  <input 
-    className="engine-box-input" 
-    type="number" 
-    step="0.01" 
-    min="0" 
-    value={extras || ""} 
-    placeholder="0.00"
-    onChange={(e) => setExtras(parseFloat(e.target.value) || 0)} 
-  />
-</div>
+          <div className="engine-box input-box">
+            <div className="engine-box-label">{t.extras} ({currency})</div>
+            <input className="engine-box-input" type="number" step="0.01" min="0" value={extras || ""} placeholder="0.00"
+              onChange={(e) => setExtras(parseFloat(e.target.value) || 0)} />
+          </div>
           <div className="engine-box input-box">
             <div className="engine-box-label">{t.marginPct}</div>
             <input className="engine-box-input" type="number" step="1" min="0" max="99" value={margin || ""} placeholder="0"
@@ -1617,22 +1421,17 @@ const handleSaveRecipe = () => {
               onChange={(e) => setLoss(parseFloat(e.target.value) || 0)} />
           </div>
           <div className="engine-box highlight-box">
-  <div className="engine-box-label">{t.realProfit}</div>
-  <div className="engine-box-value" style={{ 
-    color: calc.lucroReal >= 0 ? "white" : "#ff4d4d", 
-    fontSize: 26, // Aumentei para 26 para leres bem no telemóvel
-    fontWeight: "bold" 
-  }}>
-    {fmt(calc.lucroReal)}
-  </div>
-  {/* A Eficiência foi removida daqui para limpar o espaço */}
-</div>
-
-<div className="engine-box highlight-box">
-  <div className="engine-box-label">{t.doses}</div>
-  <div className="engine-box-value" style={{ fontSize: 26, fontWeight: "bold" }}>
-    {calc.doses > 0 ? (calc.doses - calc.effectiveDelivery).toFixed(2) : "0.00"}
-  </div>
+            <div className="engine-box-label">{t.realProfit}</div>
+            <div className="engine-box-value" style={{ color: calc.lucroReal >= 0 ? "white" : "#fca5a5", fontSize: 20 }}>
+              {fmt(calc.lucroReal)}
+            </div>
+            <div style={{ fontSize: 10, opacity: 0.75, marginTop: 3 }}>Efic.: {calc.efficiency}/100</div>
+          </div>
+          <div className="engine-box highlight-box">
+            <div className="engine-box-label">{t.doses}</div>
+            <div className="engine-box-value" style={{ fontSize: 26 }}>
+              {calc.doses > 0 ? (calc.doses - calc.effectiveDelivery).toFixed(2) : "0.00"}
+            </div>
             {calc.effectiveDelivery > 0 && (
               <div style={{ fontSize: 9, opacity: 0.8, marginTop: 2, textAlign: "center" }}>
                 🛵 {calc.effectiveDelivery.toFixed(1)} Uber
@@ -1718,34 +1517,8 @@ const handleSaveRecipe = () => {
             <input className="f-input" type="number" step="0.01" min="0" placeholder={currency} value={item.price || ""}
               style={{ textAlign: "right" }}
               onChange={(e) => updateWarehouseDraft(item.id, "price", parseFloat(e.target.value) || 0)} />
-            <select
-  className="f-input"
-  value={item.iva}
-  style={{ fontSize: "17px", minWidth: "60px" }}
-  onChange={(e) => {
-    if (e.target.value === "custom") {
-      const p = prompt("IVA %:", "23");
-      if (p) {
-        const val = parseFloat(p.replace(',', '.')) || 0;
-        updateWarehouseDraft(item.id, "iva", val / 100);
-      }
-    } else {
-      updateWarehouseDraft(item.id, "iva", parseFloat(e.target.value));
-    }
-  }}
->
-  <option value={0.23}>23%</option>
-  <option value={0.13}>13%</option>
-  <option value={0.06}>6%</option>
-  <option value={0}>0%</option>
-
-  {/* Esta linha faz o valor personalizado (ex: 5%) aparecer dentro da caixa */}
-  {![0.23, 0.13, 0.06, 0].some(v => Math.abs(v - item.iva) < 0.001) && (
-    <option value={item.iva}>{(item.iva * 100).toFixed(0)}%</option>
-  )}
-
-  <option value="custom" style={{ color: "var(--gold)" }}>+ Outro...</option>
-</select>
+            <RateSelect value={item.iva} onChange={(v) => updateWarehouseDraft(item.id, "iva", v)}
+              options={[{v:0.23,l:"23%"},{v:0.13,l:"13%"},{v:0.06,l:"6%"},{v:0,l:"0%"}]} />
             <button className="btn-del-row" onClick={() => {
               setWarehouseDraft((p) => p.filter((i) => i.id !== item.id));
               setWarehouseChanged(true);
@@ -1788,110 +1561,50 @@ const handleSaveRecipe = () => {
           </div>
         </div>
 
-        {/* 1. O Contentor Mestre (Igual à página Criar) */}
-<div className="flex-1 overflow-y-auto px-4 pb-24">
-  <div className="space-y-4 py-4">
+        {/* EXPORT / IMPORT */}
+        <div className="settings-group">
+          <div className="settings-title">📁 Export / Import</div>
+          <button className="settings-action" onClick={handleExportPdf}>{t.exportPdf}</button>
+          <button className="settings-action" onClick={handleExportWarehousePdf}>{t.exportWarehousePdf}</button>
+          <button className="settings-action" onClick={handleExportIvaPdf}>{t.exportIvaPdf}</button>
+          <button className="settings-action" onClick={handleExportJson}>{t.exportJson}</button>
+          <button className="settings-action" onClick={() => fileInputRef.current?.click()}>{t.importJson}</button>
+          <input ref={fileInputRef} type="file" accept=".json" style={{ display: "none" }} onChange={handleImport} />
+        </div>
 
-    {/* --- GRUPO EXPORTAR / BACKUP (Fica no topo) --- */}
-   <div className="settings-group">
-  <div className="settings-title">📁 EXPORTAR / BACKUP</div>
-  
-  <button className="settings-action" onClick={handleExportPdf}>{t.exportPdf}</button>
-  <button className="settings-action" onClick={handleExportWarehousePdf}>{t.exportWarehousePdf}</button>
-  <button className="settings-action" onClick={handleExportIvaPdf}>{t.exportIvaPdf}</button>
-  
- {/* Botão de Exportar Dados (JSON) */}
- <button className="settings-action" onClick={handleExportWarehouseJson}>
-  {t.exportJson}
- </button>
-  
- {/* Botão de Restaurar Dados (JSON) */}
- <button className="settings-action" onClick={() => document.getElementById('file-import-input')?.click()}>
-  {t.importJson}
- </button>
+        {/* PRO STATUS */}
+        <div className="settings-group">
+          <div className="settings-title">⭐ PRO</div>
+          <div className="settings-row">
+            <span>{t.versionInfo}</span>
+            <span style={{ color: isPro ? "var(--gold)" : "var(--txt-secondary)", fontSize: 12, fontWeight: 700 }}>
+              {isPro ? t.proActive : "FREE"}
+            </span>
+          </div>
+          <div className="settings-row">
+            <span style={{ color: "#ffffff", fontSize: 14 }}>
+              {lang === "PT" ? "Receitas guardadas" : lang === "ES" ? "Recetas guardadas" : lang === "FR" ? "Recettes" : "Saved recipes"}
+            </span>
+            <span style={{ color: "white", fontWeight: 700 }}>{savedRecipes.length}</span>
+          </div>
+          {!isPro && (
+            <button className="modal-btn-cta" style={{ margin: "10px 16px", width: "calc(100% - 32px)" }} onClick={() => setShowProModal(true)}>
+              ⭐ {t.proModal_cta}
+            </button>
+          )}
+        </div>
 
-  <input 
-    id="file-import-input"
-    type="file" 
-    accept=".json" 
-    style={{ display: "none" }} 
-    onChange={handleImportWarehouseJson} 
-  />
-</div>
-
-   {/* --- ESPAÇO MÍNIMO PARA TELEFONE --- */}
-    <div style={{ marginTop: '5px' }}></div>
-
-   
-
-    
-
-   {/* --- FOLGA PARA O SCROLL NÃO COLAR --- */}
-    <div style={{ height: '20px' }}></div>
-
-  </div> {/* FECHA o space-y-4 */}
-</div> {/* FECHA o flex-1 overflow-y-auto */}
-
-{/* --- GRUPO DADOS (FORA DO SCROLL, FIXO NO FUNDO SE QUISERES) --- */}
-{/* --- GRUPO DADOS (SÓ APARECE NAS OPÇÕES) --- */}
-{activeSection === 'settings' && (
-  <div className="settings-group" style={{ margin: '10px 15px', border: '1px solid rgba(255,0,0,0.2)' }}>
-    <div className="settings-title" style={{ fontSize: '14px', color: "white" }}>
-      ⚠️ {t.data || "Dados"}
-    </div>
-    <button className="settings-action settings-action-danger" onClick={() => setShowDeleteAllModal(true)}>
-      {t.deleteAll}
-    </button>
-  </div>
-)}
+        {/* DANGER */}
+        <div className="settings-group">
+          <div className="settings-title">⚠️ Dados</div>
+          <button className="settings-action settings-action-danger" onClick={() => setShowDeleteAllModal(true)}>{t.deleteAll}</button>
+        </div>
       </main>
 
-{/* --- BLOCO DE IMPRESSÃO EM MASSA (Invisível no ecrã) --- */}
-      <div className="print-only-area">
-        {savedRecipes.map((recipe, index) => (
-          <div key={recipe.key || index} className="print-recipe-sheet">
-            <div className="print-header">
-              <h1>{recipe.name}</h1>
-              <span>{new Date(recipe.date).toLocaleDateString()}</span>
-            </div>
-            <hr />
-            <div className="print-grid">
-  <div><strong>{t.absProfitTotal}:</strong> {fmt(recipe.profit)}</div>
-  <div><strong>{t.absProfitDose}:</strong> {fmt(recipe.profit / Math.max(recipe.doses || 1, 1))}</div>
-  <div><strong>Custo Total:</strong> {fmt(recipe.totalCost)}</div>
-  <div><strong>Doses:</strong> {(recipe.doses || 0).toFixed(2)}</div>
-</div>
-            {/* Se quiseres que cada receita comece numa folha nova */}
-            <div className="page-break"></div>
-          </div>
-        ))}
-      </div>
-
-      {activeSection === 'settings' && (
-  <div className="settings-group" style={{ marginBottom: '8px', padding: '8px 12px' }}>
-    <div className="settings-row" style={{ padding: '2px 0', border: 'none' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', height: '40px', marginBottom: '10px', width: '100%' }}>
-        <span style={{ fontSize: '14px', color: 'var(--gold)', fontWeight: 'bold' }}>⭐ PRO</span>
-      </div>
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-        <span style={{ fontSize: '14px', opacity: 0.8 }}>{t.versionInfo}</span>
-        <span style={{ 
-          color: isPro ? "var(--gold)" : "#aaa", 
-          fontWeight: 800,
-          fontSize: '11px'
-        }}>
-          {isPro ? t.proActive : "FREE"}
-        </span>
-      </div>
-    </div>
-  </div>
-)}
-
-      {/* FOOTER (O teu código original continua aqui abaixo) */}
+      {/* FOOTER */}
       <footer className="app-footer">
         {([
           { id: "dashboard", icon: "🏠", label: t.dashboard },
-          // ... resto do teu código do footer
           { id: "recipes", icon: "📂", label: t.recipes },
           { id: "create", icon: "➕", label: t.create },
           { id: "warehouse", icon: "🏗️", label: t.warehouse },
@@ -1905,10 +1618,7 @@ const handleSaveRecipe = () => {
             {label}
           </button>
         ))}
-         {/* --- GRUPO PRO COMPACTO --- */}
-    
       </footer>
     </div>
   );
 }
-

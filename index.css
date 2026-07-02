@@ -1,0 +1,581 @@
+/* ================================================================
+   CHEF MARGIN PRO — Adições ao index.css
+   Estas classes substituem os estilos inline do App.tsx.
+   Adiciona este bloco ao fim do teu index.css existente.
+   ================================================================ */
+
+/* ── VARIÁVEIS (se ainda não estiverem no teu index.css) ────── */
+:root {
+  --bg-root:       #1a0b2e;
+  --bg-surface:    #1a1a1a;
+  --bg-input:      #2d2d2d;
+  --border-subtle: #333;
+  --border-gold:   rgba(196,167,120,0.3);
+  --color-purple:  #7b2cbf;
+  --color-gold:    #c4a778;
+  --color-green:   #22c55e;
+  --color-red:     #ef4444;
+  --color-white:   #ffffff;
+  --color-muted:   #aaa;
+  --radius-card:   24px;
+  --radius-btn:    14px;
+  --radius-sm:     6px;
+  --radius-md:     8px;
+}
+
+/* ── LAYOUT RAIZ ─────────────────────────────────────────────── */
+.app-root {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  position: fixed;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-root);
+  touch-action: none;
+}
+
+.app-logo-bar {
+  flex-shrink: 0;
+  width: 100%;
+  text-align: center;
+  padding-top: 60px;
+  padding-bottom: 20px;
+  background-color: var(--bg-root);
+  display: flex;
+  justify-content: center;
+  z-index: 10;
+}
+
+.app-logo-bar img {
+  height: 50px;
+  width: auto;
+  transform: scale(1.15);
+}
+
+/* ── HEADER ──────────────────────────────────────────────────── */
+.app-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0 15px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+/* ── SECÇÕES PRINCIPAIS (main) ───────────────────────────────── */
+/* Remove o display: none daqui */
+.app-main {
+  display: flex; /* Começa visível */
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 80px;
+}
+
+/* Agora, usamos a classe active para esconder ou mostrar especificamente */
+.app-main:not(.active) {
+  display: none !important;
+}
+
+/* ── FOOTER / NAV ────────────────────────────────────────────── */
+.app-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: var(--bg-root);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 15px;
+  z-index: 9999;
+}
+
+.nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: none;
+  background: transparent;
+  color: #888;
+  flex: 1;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.nav-btn.active { color: var(--color-white); }
+.nav-icon      { font-size: 18px; }
+.nav-label     { font-size: 10px; margin-top: 2px; }
+
+/* ── MODAL OVERLAY (genérico) ────────────────────────────────── */
+.modal-overlay-full {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background-color: rgba(0,0,0,0.7);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-card-energy {
+  background-color: var(--bg-surface);
+  padding: 25px 15px;
+  border-radius: var(--radius-card);
+  width: 90%;
+  max-width: 420px;
+  max-height: 85vh;
+  overflow-y: auto;
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  position: relative;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 15px; right: 15px;
+  background: none;
+  border: none;
+  color: var(--color-red);
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.modal-title-purple {
+  color: var(--color-purple);
+  margin-bottom: 20px;
+  text-align: center;
+  width: 100%;
+}
+
+.modal-energy-body {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 100%;
+}
+
+.energy-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: end;
+}
+
+.f-input-iva-custom {
+  margin-top: 5px;
+  border-color: var(--color-purple) !important;
+}
+
+/* ── MODAL APAGAR TUDO ───────────────────────────────────────── */
+.modal-delete-icon   { font-size: 32px; text-align: center; margin-bottom: 8px; }
+.modal-delete-title  { text-align: center; color: var(--color-red); margin-bottom: 8px; font-size: 18px; }
+.modal-delete-body   { text-align: center; color: var(--color-white); font-size: 13px; margin-bottom: 20px; }
+.modal-delete-footer { display: flex; gap: 10px; }
+.modal-delete-footer .settings-action { flex: 1; }
+
+/* ── BOTÃO ENERGIA (na secção Criar) ─────────────────────────── */
+.btn-energy {
+  width: 100%;
+  padding: 10px;
+  background-color: var(--bg-surface);
+  color: var(--color-purple);
+  border: 2px solid var(--color-purple);
+  border-radius: var(--radius-btn);
+  font-size: 16px;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.btn-energy:hover { background-color: rgba(123,44,191,0.1); }
+
+.energy-btn-wrapper {
+  padding: 10px 15px 0 15px;
+}
+
+/* ── BOTÃO SUBSCREVER (dashboard) ────────────────────────────── */
+.subscribe-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+.btn-subscribe {
+  background-color: #B2BCBF;
+  color: white;
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── SAVE BTN FULL WIDTH ──────────────────────────────────────── */
+.save-btn-full {
+  width: 100%;
+  margin-top: 20px;
+}
+
+/* ── RECIPE LIST ─────────────────────────────────────────────── */
+.recipe-item-profit-negative { color: #ff4d4d; }
+.recipe-item-profit-positive { color: inherit; }
+
+.recipe-item-flex { flex: 1; }
+.empty-state-icon { font-size: 40px; margin-bottom: 12px; }
+
+/* ── CREATE SECTION ──────────────────────────────────────────── */
+.ingredient-name-col { flex: 1; }
+
+.ingr-autocomplete-wrap { position: relative; }
+.ingr-autocomplete-wrap .f-input { flex: 1; }
+
+.ingr-search-row {
+  position: relative;
+  display: flex;
+  gap: 8px;
+}
+
+.ingr-dropdown {
+  background: #1e1433;
+  border: 1px solid rgba(196,167,120,0.35);
+  border-radius: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.ingr-dropdown-item {
+  padding: 9px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #e2e8f0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.btn-ingr-add-warehouse {
+  background: rgba(196,167,120,0.15);
+  border: 1px solid rgba(196,167,120,0.3);
+  color: var(--color-gold);
+  border-radius: 6px;
+  padding: 0 7px;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.btn-ingr-confirm {
+  background-color: var(--color-green);
+  color: white;
+  padding: 0 10px;
+  border-radius: var(--radius-md);
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.btn-ingr-remove {
+  background: none;
+  border: none;
+  color: var(--color-red);
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.fryer-extras-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 0;
+}
+.fryer-extras-col { flex: 1; }
+
+.fryer-2col-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+/* Energy input group dentro da fritadeira */
+.energy-input-group-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 8px 10px;
+  gap: 8px;
+}
+
+.energy-input-label-inline {
+  margin: 0;
+  font-size: 11px;
+  color: var(--color-white);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.energy-input-value-inline {
+  background: transparent;
+  border: none;
+  text-align: right;
+  width: 100%;
+  padding: 2px;
+  color: var(--color-white);
+  font-weight: 600;
+  outline: none;
+}
+
+/* ── DONUT CHART ──────────────────────────────────────────────── */
+.donut-svg {
+  width: 160px;
+  height: 160px;
+  transform: rotate(-90deg);
+}
+
+.donut-circle-track { transition: stroke-dasharray 0.5s ease; }
+
+.donut-wrapper {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 180px;
+  margin-top: 10px;
+}
+
+.donut-label {
+  position: absolute;
+  text-align: center;
+}
+
+.donut-label-top {
+  font-size: 10px;
+  color: var(--color-muted);
+  text-transform: uppercase;
+}
+
+.donut-label-value {
+  font-size: 20px;
+  font-weight: bold;
+  color: var(--color-white);
+}
+
+/* ── ENGINE BOX VALUES ───────────────────────────────────────── */
+.engine-box-value-dynamic {
+  font-size: 26px;
+  font-weight: bold;
+}
+
+.engine-box-delivery-label {
+  font-size: 9px;
+  opacity: 0.8;
+  margin-top: 2px;
+  text-align: center;
+}
+
+/* ── DELIVERY PANEL ──────────────────────────────────────────── */
+.delivery-row        { display: flex; justify-content: space-between; }
+.delivery-row + .delivery-row { margin-top: 4px; }
+.delivery-label      { color: var(--color-muted, #888); }
+.delivery-commission { color: var(--color-red); font-weight: 700; }
+.delivery-price      { color: var(--color-gold); font-weight: 700; }
+.delivery-select     { flex: 1.5; }
+
+.nominal-profit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.nominal-profit-label { color: var(--color-muted, #888); font-size: 11px; }
+.nominal-profit-value { color: var(--color-green); font-weight: 800; font-size: 15px; font-family: monospace; }
+
+/* ── WAREHOUSE ───────────────────────────────────────────────── */
+.wh-header-unit    { text-align: center; }
+.wh-header-price   { text-align: right; }
+.wh-header-iva     { text-align: center; }
+.wh-input-price    { text-align: right; }
+.wh-iva-select     { font-size: 17px; min-width: 60px; }
+.wh-option-gold    { color: var(--color-gold); }
+.wh-history-row    { grid-column: 1 / -1; }
+.wh-empty-icon     { font-size: 40px; margin-bottom: 12px; }
+
+/* ── SETTINGS ────────────────────────────────────────────────── */
+.settings-lang-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 16px;
+}
+
+.settings-lang-select {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background: var(--bg-input);
+  color: var(--color-white);
+  border: 1px solid #444;
+  cursor: pointer;
+}
+
+.settings-lang-option { background: var(--bg-input); }
+
+.settings-row-total {
+  border-top: 1px solid var(--border-gold);
+  padding: 9px 16px;
+}
+
+.settings-row-total span:first-child {
+  font-weight: 800;
+  color: var(--color-white);
+}
+
+.settings-value-lg { font-size: 15px; }
+
+.settings-group-mt  { margin-top: 16px; }
+.settings-body-pad  { padding: 12px 16px; }
+.settings-export-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px;
+}
+
+.settings-import-label {
+  text-align: center;
+  cursor: pointer;
+}
+
+.settings-import-input { display: none; }
+.settings-danger-full  { width: 100%; }
+
+.settings-version {
+  text-align: center;
+  opacity: 0.2;
+  font-size: 10px;
+  margin-top: 20px;
+  padding-bottom: 20px;
+}
+
+/* ── SEMAPHORE ALERT BANNER ─────────────────────────────────── */
+.semaphore-banner-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.semaphore-banner-icon { font-size: 24px; }
+.semaphore-banner-text { font-weight: 800; font-size: 16px; }
+.semaphore-banner-sub  { font-size: 13px; opacity: 0.9; }
+.semaphore-banner-btn  {
+  background: rgba(0,0,0,0.3);
+  color: var(--color-white);
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-top: 10px;
+  width: 100%;
+  cursor: pointer;
+}
+
+/* ── PROFIT INDICATOR ────────────────────────────────────────── */
+.profit-bullet-profit { color: inherit; }  /* sobreescrito dinamicamente */
+.profit-bullet-loss   { color: #ef4444; }
+.profit-label-white   { color: var(--color-white); }
+.profit-cost-bullet   { color: var(--color-gold); }
+
+
+/* ── CLASSES ADICIONAIS ──────────────────────────────────────── */
+
+/* Texto colorido utilitário */
+.txt-green { color: var(--color-green); }
+.txt-red   { color: var(--color-red); }
+
+/* Input centrado (KG usados na fritadeira) */
+.f-input-center { text-align: center; }
+
+/* Input nome de ingrediente (flex dentro de autocomplete) */
+.ingr-name-input { flex: 1; }
+
+/* Modal Pro maxWidth */
+.pro-modal { max-width: 340px; }
+
+/* chart-label: fontSize é dinâmico (isIdle), cor e peso ficam no CSS */
+.chart-label {
+  color: #ffffff;
+  font-weight: 700;
+  text-align: center;
+  padding: 4px 0;
+  /* font-size controlado pelo React: isIdle ? 18 : 13 */
+}
+
+/* chart-totals layout */
+.chart-totals {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* sem-banner sem margin inline */
+.sem-banner { margin-bottom: 20px; }
+
+/* canvas-container é também o donut-wrapper */
+.canvas-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 180px;
+  margin-top: 10px;
+}
+
+/* energy-input-group base (sem os estilos inline) */
+.energy-input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.03);
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.25);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+}
+.f-input-flex {
+  flex: 1;
+}
+.ingredients-header-simple {
+  position: relative;
+  z-index: 20;
+  display: flex; /* Adicionei isto caso precises que os elementos fiquem alinhados */
+  /* Adiciona aqui qualquer outro estilo que tenhas em mente */
+}
+.profit-indicator {
+  margin-right: 8px; /* Ajusta conforme necessário */
+  font-size: 1em;
+}
+
+/* fryer-section margem do topo */
+.fryer-section { margin-top: 10px; }
+
+/* settings IVA total peso em negrito */
+.settings-row-total .profit-label-white:first-child { font-weight: 800; }
+
+/* modal-price euro sign */
+.modal-price-eur { font-size: 20px; }
+
+/* Estilos que ficam inline por serem DINÂMICOS (não devem ir para CSS):
+   - style={{ display: activeSection === "X" ? "flex" : "none" }}  → controlo de visibilidade via React state
+   - style={{ color: totalProfit < 0 ? "var(--color-red)" : activeColor }} → cor dinâmica via cálculo
+   - style={{ fontSize: isIdle ? 18 : 13 }}  → tamanho dinâmico via estado
+   - style={{ position: 'relative', zIndex: 20 }} → z-index de sobreposição crítico para dropdowns
+   - style={{ fontWeight: 800 }} → restante no span do IVA total (candidato a classe futura)
+*/

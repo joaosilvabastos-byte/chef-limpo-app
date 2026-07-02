@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Chef Margin Pro",
+    "slug": "chef-margin-app",
+    "version": "1.0.5",
+    "orientation": "portrait",
+    "icon": "./assets/botao.png",
+    "userInterfaceStyle": "light",
+    "scheme": "chef-margin-app",
+    "splash": {
+      "image": "./assets/LOGO.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/botao.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.joaobastos.chefmargin",
+      "versionCode": 2,
+      "newArchEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-splash-screen"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "b70fe824-4b70-45a1-ae2b-84e47b5f82d2"
+      }
+    }
+  }
+}

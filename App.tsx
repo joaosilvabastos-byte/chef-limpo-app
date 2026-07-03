@@ -1,8 +1,4 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import * as SplashScreen from 'expo-splash-screen';
-
-SplashScreen.preventAutoHideAsync().catch(() => {});
-
 //import * as Print from 'expo-print';
 //import * as Sharing from 'expo-sharing';
 //import * as DocumentPicker from 'expo-document-picker';
@@ -506,7 +502,7 @@ const lucroRealFinal = (lucroNominal - comissaoUberTotal) * (1 - lossRate);
     lucroReal: lucroRealFinal,
     doses: dosesPotenciais,
     effectiveDelivery: qtdEntregasLida,
-    ivaIngredientes: ivaIngredientes + ivaFryerValue + ivaEnergy,
+    ivaIngredientes: ivaIngredientes,  // só ingredientes — ivaEnergy e ivaFryer são separados
     ivaEnergy,
     ivaFryer: ivaFryerValue,
     nominalProfit: dosesPotenciais > 0 ? lucroRealFinal / dosesPotenciais : 0,
@@ -599,46 +595,44 @@ function fmtDate(iso: string) {
 
 const STORAGE_PREFIX = "CHEFV2_";
 
-// --- NOVAS FUNÇÕES ASYNCSTORAGE (Substituem o localStorage) ---
-async function saveLS(key: string, data: any) {
-  try {
-    await AsyncStorage.setItem(key, JSON.stringify(data));
+// FUNÇÃO ATUALIZADA: Agora aceita o 'db' e o 'user' para sincronizar
+async function saveLS(key: string, data: any, user?: any) { 
+  try { 
+    // 1. Guarda sempre no browser (Local)
+    localStorage.setItem(key, JSON.stringify(data)); 
+    
+   // 2. Sincronização com a Nuvem removida temporariamente para estabilidade local
+    /*
+    if (user && key.startsWith(STORAGE_PREFIX + "REC_")) {
+      // @ts-ignore
+      const { doc, setDoc } = await import('firebase/firestore');
+      // @ts-ignore
+      await setDoc(doc(db, "receitas", key), {
+        ...data,
+        userId: user.uid,
+        updatedAt: new Date().toISOString()
+      });
+      console.log("☁️ Sincronizado com Firebase");
+    }
+    */
   } catch (e) {
     console.error("Erro ao guardar:", e);
-  }
+  } 
 }
 
-async function loadLS_Async<T>(key: string): Promise<T | null> {
-  try {
-    const r = await AsyncStorage.getItem(key);
-    return r ? (JSON.parse(r) as T) : null;
-  } catch {
-    return null;
+function loadLS<T>(key: string): T | null { try { const r = localStorage.getItem(key); return r ? JSON.parse(r) as T : null; } catch { return null; } }
+
+function getAllRecipes(): SavedRecipe[] {
+  const result: SavedRecipe[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(STORAGE_PREFIX + "REC_")) {
+      const d = loadLS<SavedRecipe>(k);
+      if (d) result.push({ active: false, ...d, key: k });
+    }
   }
+  return result.sort((a, b) => a.name.localeCompare(b.name));
 }
-
-async function getAllRecipes_Async(): Promise<SavedRecipe[]> {
-  try {
-    const keys = await AsyncStorage.getAllKeys();
-    const recipeKeys = keys.filter(k => k.startsWith(STORAGE_PREFIX + "REC_"));
-    const pairs = await AsyncStorage.multiGet(recipeKeys);
-
-    const result: SavedRecipe[] = [];
-    pairs.forEach(([key, value]) => {
-      if (value) {
-        const d = JSON.parse(value) as SavedRecipe;
-        result.push({ active: false, ...d, key });
-      }
-    });
-    return result.sort((a, b) => a.name.localeCompare(b.name));
-  } catch {
-    return [];
-  }
-}
-
-// Funções síncronas removidas ou mantidas apenas como casca para evitar erros imediatos
-function loadLS<T>(key: string): T | null { return null; }
-function getAllRecipes(): SavedRecipe[] { return []; }
 
 // ── Toast ─────────────────────────────────────────────────────────────────
 function ToastContainer({ toasts }: { toasts: ToastItem[] }) {
@@ -811,15 +805,20 @@ const totalCost = (activeRecipes && activeRecipes.length > 0)
   const bannerText = semaphore === "orange" ? t.profitWarning : semaphore === "red" ? t.semRed : t.semGreen;
   const bannerClass = semaphore === "orange" ? "sem-orange" : semaphore === "red" ? "sem-red" : "sem-green";
 
-  // Cálculo da percentagem para o Donut
-  // Quando há lucro: mostra a fatia de lucro (verde/laranja)
-  // Quando há prejuízo: mostra um arco proporcional ao prejuízo (vermelho) — nunca fica uma pinta
-  const totalGeral = Math.abs(totalProfit) + Math.abs(totalCost);
-  const percLucro = totalGeral > 0
-    ? totalProfit >= 0
-      ? (totalProfit / totalGeral) * 100           // lucro real → arco positivo
-      : Math.min(Math.abs(totalProfit) / totalGeral * 100, 95)  // prejuízo → arco vermelho (cap 95 para nunca fechar)
-    : 0;
+  // Cálculo do arco para o Donut (strokeDasharray com circunferência ~100.5 para r=16)
+  const percLucro = (() => {
+    if (isIdle) return 0;
+    if (totalProfit >= 0) {
+      // Lucro positivo: arco proporcional à margem real
+      const totalGeral = totalProfit + Math.abs(totalCost);
+      return totalGeral > 0 ? (totalProfit / totalGeral) * 100 : 0;
+    } else {
+      // Prejuízo: arco vermelho sempre visível — mínimo 20, máximo 90
+      const totalGeral = Math.abs(totalProfit) + Math.abs(totalCost);
+      const raw = totalGeral > 0 ? (Math.abs(totalProfit) / totalGeral) * 100 : 50;
+      return Math.max(20, Math.min(raw, 90));
+    }
+  })();
 
   return (
     <div className="dashboard-root">
@@ -871,17 +870,22 @@ const totalCost = (activeRecipes && activeRecipes.length > 0)
         </div>
 
         <div className="canvas-container" style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', height: '180px', marginTop: '10px' }}>
-          <svg viewBox="0 0 36 36" style={{ width: '160px', height: '160px', transform: 'rotate(-90deg)' }}>
-            <circle cx="18" cy="18" r="16" fill="none" stroke="#c4a778" strokeWidth="3.5" />
-            <circle
-              cx="18" cy="18" r="16" fill="none" 
-              stroke={totalProfit < 0 ? "#ef4444" : activeColor}
-              strokeWidth="3.5"
-              strokeDasharray={`${percLucro}, 100`}
-              strokeLinecap="round"
-              style={{ transition: 'stroke-dasharray 0.5s ease' }}
-            />
-          </svg>
+          <svg viewBox="0 0 36 36" style={{ width: '160px', height: '160px' }}>
+  {/* Círculo de Fundo (cinza) */}
+  <circle cx="18" cy="18" r="16" fill="none" stroke="#c4a778" strokeWidth="3.5" />
+  
+  {/* Círculo do Donut (O arco que cresce) */}
+  <circle
+    cx="18" cy="18" r="16" fill="none" 
+    stroke={totalProfit < 0 ? "#ef4444" : activeColor}
+    strokeWidth="3.5"
+    strokeDasharray={`${Math.abs(percLucro)} 100`}
+    strokeLinecap="round"
+    // Esta rotação garante que ele começa às 9h (esquerda)
+    transform="rotate(-90 18 18)" 
+    style={{ transition: 'stroke-dasharray 0.5s ease' }}
+  />
+</svg>
          <div style={{ position: 'absolute', textAlign: 'center' }}>
             {/* Tradução dinâmica: usa t.margin para Português/Espanhol/Inglês */}
             <div style={{ fontSize: '10px', color: '#aaa', textTransform: 'uppercase' }}>
@@ -903,52 +907,22 @@ const totalCost = (activeRecipes && activeRecipes.length > 0)
     // Definimos o user fixo localmente para não quebrar o resto do layout da app
     const [user, setUser] = useState<any>({ displayName: "Chef", email: "local@chef.com" });
 
-    const [isAppReady, setIsAppReady] = useState(false);
 
-    // Estados que dependem de dados carregados
-    const [lang, setLang] = useState<Lang>("PT");
-    const [isPro, setIsPro] = useState(false);
-    const [warehouseSaved, setWarehouseSaved] = useState<WarehouseItem[]>([]);
-    const [warehouseDraft, setWarehouseDraft] = useState<WarehouseItem[]>([]);
-    const [savedRecipes, setSavedRecipes] = useState<SavedRecipe[]>([]);
-    const [acknowledgedAlerts, setAcknowledgedAlerts] = useState<Set<string>>(new Set());
-
-    // CARREGAMENTO INICIAL DE DADOS
+    
+    // O useEffect fica vazio, já não precisa de ouvir o Firebase para nada!
     useEffect(() => {
-      async function loadAllData() {
-        try {
-          const storedLang = await loadLS_Async<Lang>(STORAGE_PREFIX + "LANG") || "PT";
-          const storedPro = await loadLS_Async<boolean>(STORAGE_PREFIX + "PRO") || false;
-          const storedWarehouse = (await loadLS_Async<WarehouseItem[]>(STORAGE_PREFIX + "WAREHOUSE") || []).sort((a, b) => a.name.localeCompare(b.name));
-          const storedRecipes = await getAllRecipes_Async();
-          const storedAlerts = new Set(await loadLS_Async<string[]>(STORAGE_PREFIX + "ACK_ALERTS") || []);
-
-          setLang(storedLang);
-          setIsPro(storedPro);
-          setWarehouseSaved(storedWarehouse);
-          setWarehouseDraft(storedWarehouse);
-          setSavedRecipes(storedRecipes);
-          setAcknowledgedAlerts(storedAlerts);
-
-          setIsAppReady(true);
-
-          // Esconder Splash Screen
-          await SplashScreen.hideAsync();
-        } catch (e) {
-          console.warn("Erro ao carregar dados:", e);
-          setIsAppReady(true);
-        }
-      }
-      loadAllData();
+      // Autenticação do Firebase removida com sucesso.
     }, []);
 
-    const setLangSave = (l: Lang) => { setLang(l); saveLS(STORAGE_PREFIX + "LANG", l); };
+    
+
+    // ── PRO Modal ─────────────────────────────────────────────────────────────
 function ProModal({ onClose, t, setIsPro, setShowProModal, proModalCallback, setProModalCallback }: any) {
-  const handleActivate = async (e: React.MouseEvent) => {
+  const handleActivate = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsPro(true);
     // Chave consistente com o STORAGE_PREFIX usado no loadLS (linha 975)
-    await AsyncStorage.setItem(STORAGE_PREFIX + "PRO", "true");
+    localStorage.setItem(STORAGE_PREFIX + "PRO", "true");
     setShowProModal(false);
     // Executar o callback pendente (ex: guardar receita após activar Pro)
     if (typeof proModalCallback === "function") {
@@ -991,23 +965,25 @@ function ProModal({ onClose, t, setIsPro, setShowProModal, proModalCallback, set
     try {
       // @ts-ignore
       if (window.google && window.google.accounts && window.google.accounts.id) {
-    // @ts-ignore
-    window.google.accounts.id.initialize({
-      client_id: "713374828773-v738tt14vmscl3r4n4clre3v0ptb7p25.apps.googleusercontent.com",
-      callback: async (response: any) => {
-        console.log("Login efetuado com sucesso no Google!", response);
-        setUser({ displayName: "Chef Margin Pro", email: "joaosilvabastos@gmail.com" });
-        setIsPro(true);
-        await AsyncStorage.setItem(STORAGE_PREFIX + "PRO", "true");
-      }
-    });
+        // @ts-ignore
+        window.google.accounts.id.initialize({
+          client_id: "713374828773-v738tt14vmscl3r4n4clre3v0ptb7p25.apps.googleusercontent.com",
+          callback: (response: any) => {
+            console.log("Login efetuado com sucesso no Google!", response);
+            setUser({ displayName: "Chef Margin Pro", email: "joaosilvabastos@gmail.com" });
+            setIsPro(true);
+            localStorage.setItem(STORAGE_PREFIX + "PRO", "true");
+          }
+        });
         // @ts-ignore
         window.google.accounts.id.prompt();
       } else {
-        const email = "joaosilvabastos@gmail.com";
-        setUser({ displayName: "Chef Margin Pro", email: email });
-        setIsPro(true);
-        saveLS(STORAGE_PREFIX + "PRO", "true");
+        const email = prompt("Google Sign-In Direct (PC):\nIntroduza o seu email:", "joaosilvabastos@gmail.com");
+        if (email) {
+          setUser({ displayName: "Chef Margin Pro", email: email });
+          setIsPro(true);
+          localStorage.setItem(STORAGE_PREFIX + "PRO", "true");
+        }
       }
     } catch (err) {
       console.error("Erro ao chamar o Google Nativo:", err);
@@ -1022,6 +998,7 @@ function ProModal({ onClose, t, setIsPro, setShowProModal, proModalCallback, set
 }, [lang]);
 
   const [activeSection, setActiveSection] = useState<"dashboard" | "recipes" | "create" | "warehouse" | "settings">("dashboard");
+  const [isPro, setIsPro] = useState<boolean>(() => loadLS<boolean>(STORAGE_PREFIX + "PRO") || false);
   const [showProModal, setShowProModal] = useState(false);
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
   const [deleteRecipeKey, setDeleteRecipeKey] = useState<string | null>(null);
@@ -1071,9 +1048,15 @@ function ProModal({ onClose, t, setIsPro, setShowProModal, proModalCallback, set
   const [deliveryCount, setDeliveryCount] = useState(0);
 
   // Warehouse
+  const [warehouseSaved, setWarehouseSaved] = useState<WarehouseItem[]>(() =>
+    (loadLS<WarehouseItem[]>(STORAGE_PREFIX + "WAREHOUSE") || []).sort((a, b) => a.name.localeCompare(b.name))
+  );
+  const [warehouseDraft, setWarehouseDraft] = useState<WarehouseItem[]>(() =>
+    (loadLS<WarehouseItem[]>(STORAGE_PREFIX + "WAREHOUSE") || []).sort((a, b) => a.name.localeCompare(b.name))
+  );
 const handleGlobalChange = (val: string, setter: any, field?: string) => {
   const cleanVal = val.replace(',', '.');
-
+  
   // Permite apenas números e um único ponto decimal
   if (cleanVal === '' || /^[0-9]*\.?[0-9]*$/.test(cleanVal)) {
     if (field) {
@@ -1087,6 +1070,7 @@ const handleGlobalChange = (val: string, setter: any, field?: string) => {
   const [warehouseChanged, setWarehouseChanged] = useState(false);
 
   // Saved recipes
+  const [savedRecipes, setSavedRecipes] = useState<SavedRecipe[]>(() => getAllRecipes());
   const [recipesTab, setRecipesTab] = useState<"all" | "ranking">("all");
 
  const fryerOilItem = useMemo(() => {
@@ -1100,6 +1084,11 @@ const handleGlobalChange = (val: string, setter: any, field?: string) => {
   const activeRecipes = useMemo(() =>
     savedRecipes.filter((r) => r.active !== false),
     [savedRecipes]
+  );
+
+  // Vigilante: acknowledged cost-alert keys persisted in localStorage
+  const [acknowledgedAlerts, setAcknowledgedAlerts] = useState<Set<string>>(
+    () => new Set(loadLS<string[]>(STORAGE_PREFIX + "ACK_ALERTS") || [])
   );
 
   // Vigilante: compute cost alerts vs current warehouse prices
@@ -1229,7 +1218,7 @@ const clearForm = () => {
   };
 
    
-  const handleSaveRecipe = async () => {
+ const handleSaveRecipe = () => {
   const name = recipeName.trim() || "Receita " + fmtDate(new Date().toISOString());
   const key = STORAGE_PREFIX + "REC_" + name.replace(/[\s\/\\]/g, "_");
 
@@ -1275,18 +1264,17 @@ const clearForm = () => {
     deliveryRate,
   };
 
-  await saveLS(key, data);
-  const updatedRecipes = await getAllRecipes_Async();
-  setSavedRecipes(updatedRecipes);
+  saveLS(key, data, user);
+  setSavedRecipes(getAllRecipes());
   showToast(`"${name}" guardada!`);
   if (typeof clearForm === "function") clearForm();
 }; // Fecha o handleSaveRecipe
 
-  const toggleRecipeActive = async (key: string) => {
+  const toggleRecipeActive = (key: string) => {
     const recipe = savedRecipes.find((r) => r.key === key);
     if (!recipe) return;
     const updated = { ...recipe, active: !(recipe.active !== false) };
-    await saveLS(key, updated);
+    saveLS(key, updated, user);
     setSavedRecipes((prev) => prev.map((r) => r.key === key ? updated : r));
   };
 
@@ -1307,16 +1295,19 @@ const clearForm = () => {
     setActiveSection("create");
   };
 
-  const handleDelete = async (key: string) => {
-    // 1. Cria uma nova lista sem a receita que queres apagar
-    const updatedRecipes = savedRecipes.filter(recipe => recipe.key !== key);
-
-    // 2. Atualiza o estado das receitas com a nova lista
-    setSavedRecipes(updatedRecipes);
-
-    // 3. Guarda no AsyncStorage para a alteração ser permanente
-    await AsyncStorage.removeItem(key);
-  };
+  const handleDelete = (key: string) => {
+  // 1. Cria uma nova lista sem a receita que queres apagar
+  const updatedRecipes = savedRecipes.filter(recipe => recipe.key !== key);
+  
+  // 2. Atualiza o estado das receitas com a nova lista
+  setSavedRecipes(updatedRecipes);
+  
+  // 3. Guarda no localStorage para a alteração ser permanente
+  localStorage.setItem('savedRecipes', JSON.stringify(updatedRecipes));
+  
+  // Opcional: Se tiveres lógica de "confirmar", podes mantê-la aqui, 
+  // mas agora a receita será removida visualmente.
+};
 
   // Vigilante callbacks
   
@@ -1324,9 +1315,28 @@ const handleReajustar = useCallback((recipeKey: string) => {
     const original = savedRecipes.find((r: any) => r.key === recipeKey) as any;
     if (!original) return;
 
+    // A TUA SOLUÇÃO: Usar 'name' que é a chave correta no objeto
     const nomeBase = original.name || original.recipeName || "";
-    const novoNome = nomeBase + " (Ajustado)";
     
+    let novoNome = "";
+    
+    // Este ciclo obriga a escolher um nome válido ou a cancelar
+    while (true) {
+      const input = window.prompt("Nova versão (escolha um nome diferente):", nomeBase);
+      
+      // Se clicar em Cancelar, sai da função sem apagar nada
+      if (input === null) return;
+
+      // Se o nome for diferente e não estiver vazio, quebramos o ciclo
+      if (input.trim() !== "" && input.trim() !== nomeBase.trim()) {
+        novoNome = input;
+        break; 
+      }
+
+      alert("Erro: O nome tem de ser diferente do original e não pode estar vazio!");
+    }
+
+    // Só chega aqui se o nome for válido
     setRecipeName(novoNome);
   
     setIngredients(original.ingredients || []);
@@ -1351,9 +1361,9 @@ const handleReajustar = useCallback((recipeKey: string) => {
   }, []);
 
   // Warehouse
-  const handleSaveWarehouse = async () => {
+  const handleSaveWarehouse = () => {
     const sorted = [...warehouseDraft].sort((a, b) => a.name.localeCompare(b.name));
-    await saveLS(STORAGE_PREFIX + "WAREHOUSE", sorted);
+    saveLS(STORAGE_PREFIX + "WAREHOUSE", sorted);
     setWarehouseSaved(sorted);
     setWarehouseDraft(sorted);
     setWarehouseChanged(false);
@@ -1361,7 +1371,7 @@ const handleReajustar = useCallback((recipeKey: string) => {
     applySyncToRecipes(sorted);
     // Clear previous alerts so new price changes always show the alert dialog
     setAcknowledgedAlerts(new Set());
-    await saveLS(STORAGE_PREFIX + "ACK_ALERTS", []);
+    saveLS(STORAGE_PREFIX + "ACK_ALERTS", []);
     showToast(t.toastWarehouseSaved);
   };
 
@@ -1460,29 +1470,24 @@ const handleExportBackupJson = () => {
 };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+ const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
   const file = e.target.files?.[0]; 
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = async (ev) => {
+  reader.onload = (ev) => {
     try {
       const data = JSON.parse(ev.target?.result as string);
       
       // Guarda os dados no armazenamento do telemóvel/PC
-      const entries = Object.entries(data);
-      for (const [k, v] of entries) {
-        await AsyncStorage.setItem(k, JSON.stringify(v));
-      }
+      Object.keys(data).forEach((k) => { 
+        localStorage.setItem(k, JSON.stringify(data[k])); 
+      });
 
       showToast("✨ Backup restaurado!");
 
       // Aguarda 1.2 segundos para o user ver a mensagem e depois faz o refresh
-      setTimeout(async () => {
-        // No React Native, não existe window.location.reload.
-        // Recarregamos os dados manualmente.
-        const updatedRecipes = await getAllRecipes_Async();
-        setSavedRecipes(updatedRecipes);
-        setActiveSection("dashboard");
+      setTimeout(() => {
+        window.location.reload();
       }, 1200);
 
     } catch (err) {
@@ -1501,26 +1506,37 @@ const handleExportBackupJson = () => {
     });
   };
 
-// ivaTotal: recalcula com calcRecipe para cada receita guardada (SavedRecipe não guarda os campos de IVA)
-  const ivaTotal = useMemo(() => {
-    if (savedRecipes && savedRecipes.length > 0) {
-      return savedRecipes.reduce((acc: number, r: any) => {
-        const rc = calcRecipe(
-          r.ingredients || [], r.extras || 0, r.margin || 0,
-          r.sellPrice || 0, r.loss || 0,
-          r.fryer || false, r.fryerData || {},
-          null,  // fryerOilItem — irrelevante para IVA dos ingredientes
-          r.energy || false, r.energyData || {},
-          r.deliveryCount || 0, r.deliveryRate || 0,
-          true, r.objetivo || 0
-        );
-        return acc + rc.ivaIngredientes + rc.ivaEnergy + rc.ivaFryer;
-      }, 0);
-    }
-    return calc.ivaIngredientes + calc.ivaEnergy + calc.ivaFryer;
-  }, [savedRecipes, calc]);
-
+// ivaTotal: soma o IVA de TODAS as receitas guardadas (activas e inactivas)
+  // Nota: calcRecipe.ivaIngredientes já inclui ivaFryer+ivaEnergy (é o IVA total da receita)
+  // Os campos ivaEnergy e ivaFryer são os sub-totais separados para exibição
+  // IVA de TODAS as receitas guardadas (activas e inactivas)
+  // calcRecipe.ivaIngredientes = só ingredientes; ivaEnergy e ivaFryer são separados
+ const allRecipesIva = useMemo(() => {
+  if (!savedRecipes || savedRecipes.length === 0) return null;
   
+  return savedRecipes.reduce((acc: { ing: number; energy: number }, r: any) => {
+    const rc = calcRecipe(
+      r.ingredients || [], r.extras || 0, r.margin || 0,
+      r.sellPrice || 0, r.loss || 0,
+      r.fryer || false, r.fryerData || {},
+      undefined,
+      r.energy || false, r.energyData || {},
+      r.deliveryCount || 0, r.deliveryRate || 0,
+      true, r.objetivo || 0
+    );
+    
+    // Somamos apenas o que faz sentido (Ingredientes + Energia)
+    return {
+      ing:    acc.ing    + rc.ivaIngredientes,
+      energy: acc.energy + rc.ivaEnergy,
+    };
+  }, { ing: 0, energy: 0 });
+}, [savedRecipes, savedRecipes.length]); // <--- Dependência corrigida aqui
+
+// Soma apenas os dois campos relevantes
+const ivaTotal = allRecipesIva
+  ? allRecipesIva.ing + allRecipesIva.energy
+  : (calc.ivaIngredientes || 0) + (calc.ivaEnergy || 0);  
   // ── Render ─────────────────────────────────────────────────────────────
  return (
 <div className="app-root" style={{ 
@@ -1581,10 +1597,11 @@ const handleExportBackupJson = () => {
               <button 
                 className="settings-action settings-action-danger" 
                 style={{ flex: 1 }} 
-                onClick={async () => {
-                  const keys = await AsyncStorage.getAllKeys();
-                  const recKeys = keys.filter(k => k.startsWith(STORAGE_PREFIX + "REC_"));
-                  await AsyncStorage.multiRemove(recKeys);
+                onClick={() => {
+                  for (let i = localStorage.length - 1; i >= 0; i--) {
+                    const k = localStorage.key(i);
+                    if (k && k.startsWith(STORAGE_PREFIX + "REC_")) localStorage.removeItem(k);
+                  }
                   setSavedRecipes([]);
                   setShowDeleteAllModal(false);
                   showToast("🗑️ " + (t.deleteAll || "Receitas apagadas"));
@@ -2577,9 +2594,11 @@ let power = val === "Eletricidade" ? 0 : val === "Gás" ? 0 : 0;
       style={{ fontSize: "17px", minWidth: "60px" }}
       onChange={(e) => {
         if (e.target.value === "custom") {
-           // No React Native simplificamos para 23% se clicar em outro por agora
-           // ou poderíamos usar um modal. Por brevidade, mantemos os padrões.
-           updateWarehouseDraft(item.id, "iva", 0.23);
+          const p = prompt("IVA %:", "23");
+          if (p) {
+            const val = parseFloat(p.replace(',', '.')) || 0;
+            updateWarehouseDraft(item.id, "iva", val / 100);
+          }
         } else {
           updateWarehouseDraft(item.id, "iva", parseFloat(e.target.value));
         }
@@ -2626,49 +2645,27 @@ let power = val === "Eletricidade" ? 0 : val === "Gás" ? 0 : 0;
       <main className={`app-main ${activeSection === "settings" ? "active" : ""}`}>
 
        {/* IVA SUMMARY */}
-        <div className="settings-group" style={{ paddingBottom: "20px", display: "block", height: "auto", minHeight: "250px", overflow: "visible" }}>
-          <div className="settings-title">{t.ivaTotal}</div>
-          
-          <div className="settings-row" style={{ display: "flex", justifyContent: "space-between", padding: "10px 16px" }}>
-            <span style={{ color: '#ffffff' }}>{t.ivaIngredients}</span>
-            <span className="settings-value">{fmt(
-              savedRecipes.length > 0
-                ? savedRecipes.reduce((acc: number, r: any) => {
-                    const rc = calcRecipe(r.ingredients||[], r.extras||0, r.margin||0, r.sellPrice||0, r.loss||0, r.fryer||false, r.fryerData||{}, null, r.energy||false, r.energyData||{}, r.deliveryCount||0, r.deliveryRate||0, true, r.objetivo||0);
-                    return acc + rc.ivaIngredientes;
-                  }, 0)
-                : calc.ivaIngredientes
-            )}</span>
-          </div>
-          <div className="settings-row" style={{ display: "flex", justifyContent: "space-between", padding: "10px 16px" }}>
-            <span style={{ color: '#ffffff' }}>{t.ivaEnergy}</span>
-            <span className="settings-value">{fmt(
-              savedRecipes.length > 0
-                ? savedRecipes.reduce((acc: number, r: any) => {
-                    const rc = calcRecipe(r.ingredients||[], r.extras||0, r.margin||0, r.sellPrice||0, r.loss||0, r.fryer||false, r.fryerData||{}, null, r.energy||false, r.energyData||{}, r.deliveryCount||0, r.deliveryRate||0, true, r.objetivo||0);
-                    return acc + rc.ivaEnergy;
-                  }, 0)
-                : calc.ivaEnergy
-            )}</span>
-          </div>
-          <div className="settings-row" style={{ display: "flex", justifyContent: "space-between", padding: "10px 16px" }}>
-            <span style={{ color: '#ffffff' }}>{t.ivaFryer}</span>
-            <span className="settings-value">{fmt(
-              savedRecipes.length > 0
-                ? savedRecipes.reduce((acc: number, r: any) => {
-                    const rc = calcRecipe(r.ingredients||[], r.extras||0, r.margin||0, r.sellPrice||0, r.loss||0, r.fryer||false, r.fryerData||{}, null, r.energy||false, r.energyData||{}, r.deliveryCount||0, r.deliveryRate||0, true, r.objetivo||0);
-                    return acc + rc.ivaFryer;
-                  }, 0)
-                : calc.ivaFryer
-            )}</span>
-          </div>
+<div className="settings-group" style={{ paddingBottom: "20px", display: "block", height: "auto", minHeight: "250px", overflow: "visible" }}>
+  <div className="settings-title">{t.ivaTotal}</div>
+  
+  {/* IVA Ingredientes */}
+  <div className="settings-row" style={{ display: "flex", justifyContent: "space-between", padding: "10px 16px" }}>
+    <span style={{ color: '#ffffff' }}>{t.ivaIngredients}</span>
+    <span className="settings-value">{fmt(allRecipesIva ? allRecipesIva.ing : (calc.ivaIngredientes || 0))}</span>
+  </div>
 
-          <div className="settings-row" style={{ borderTop: "1px solid rgba(196,167,120,0.3)", display: "flex", justifyContent: "space-between", padding: "15px 16px" }}>
-            <span style={{ fontWeight: 800, color: '#ffffff' }}>{t.ivaTotal}</span>
-            <span className="settings-value" style={{ fontSize: 15 }}>{fmt(ivaTotal)}</span>
-          </div>
-        </div>
+  {/* IVA Energia */}
+  <div className="settings-row" style={{ display: "flex", justifyContent: "space-between", padding: "10px 16px" }}>
+    <span style={{ color: '#ffffff' }}>{t.ivaEnergy}</span>
+    <span className="settings-value">{fmt(allRecipesIva ? allRecipesIva.energy : (calc.ivaEnergy || 0))}</span>
+  </div>
 
+  {/* IVA TOTAL (Soma final limpa) */}
+  <div className="settings-row" style={{ borderTop: "1px solid rgba(196,167,120,0.3)", display: "flex", justifyContent: "space-between", padding: "15px 16px" }}>
+    <span style={{ fontWeight: 800, color: '#ffffff' }}>{t.ivaTotal}</span>
+    <span className="settings-value" style={{ fontSize: 15 }}>{fmt(ivaTotal)}</span>
+  </div>
+</div>
         
 
         {/* 1. Contentor com Scroll Solto */}

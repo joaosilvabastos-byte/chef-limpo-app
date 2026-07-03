@@ -450,21 +450,24 @@ function calcRecipe(
   let ivaFryerValue = 0;
 
   if (fryer && fryerData) {
-    // Busca automática: Preço e IVA do Armazém
     const oilPriceBase = n(fryerOilItem?.price); 
-    const rawIvaValue = String(fryerOilItem?.iva || "0").replace(/[^0-9.]/g, "");
-    const parsedIva = parseFloat(rawIvaValue) || 0;
-    const oilIvaRate = parsedIva > 1 ? parsedIva / 100 : parsedIva;
+    
+    // 1. Limpa o IVA e garante que vira um número
+    const ivaInput = String(fryerOilItem?.iva || "0");
+    const parsedIva = parseFloat(ivaInput.replace(/[^0-9.]/g, "")) || 0;
+    
+    // 2. Se o IVA for > 1 (ex: 23), divide por 100 para virar 0.23. Se for 0.23, mantém.
+    const oilIvaRate = parsedIva >= 1 ? parsedIva / 100 : parsedIva;
 
     const litrosNaMaquina = n(fryerData.oilLiters);
     const nUtilizacoes = Math.max(1, n(fryerData.uses));
 
-    // O Custo de 1 uso = (Preço * Litros * (1+IVA)) / Usos
     if (litrosNaMaquina > 0 && oilPriceBase > 0) {
       fryerCost = (oilPriceBase * (1 + oilIvaRate) * litrosNaMaquina) / nUtilizacoes;
+      // 3. Garante que o ivaFryerValue é um número de ponto flutuante puro
       ivaFryerValue = (oilPriceBase * oilIvaRate * litrosNaMaquina) / nUtilizacoes;
     }
-  }
+}
 
   // 5. CUSTO TOTAL (Soma tudo!)
   const totalCost = totalBase + energyCostVal + fryerCost + n(extras);

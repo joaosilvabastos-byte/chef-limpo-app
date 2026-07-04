@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 // @ts-ignore
 import './index.css';
+import { Share } from 'react-native';
 
 
 // ── i18n ────────────────────────────────────────────────────────────────────
@@ -1417,8 +1418,10 @@ const handleReajustar = useCallback((recipeKey: string) => {
   };*/
 
 // 1. Export JSON — Receitas
-const handleExportRecipesJson = () => {
+const handleExportRecipesJson = async () => {
   const dataStr = JSON.stringify(savedRecipes, null, 2);
+
+  /* --- CÓDIGO ANTIGO (SÓ PARA BROWSER) ---
   const blob = new Blob([dataStr], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -1426,6 +1429,17 @@ const handleExportRecipesJson = () => {
   link.download = `ChefMargin_Receitas_${new Date().toISOString().slice(0, 10)}.json`;
   link.click();
   URL.revokeObjectURL(url);
+  -------------------------------------- */
+
+  // --- NOVO CÓDIGO (PARA TELEMÓVEL) ---
+  try {
+    await Share.share({
+      message: dataStr,
+      title: 'ChefMargin_Receitas'
+    });
+  } catch (err) {
+    console.log("Erro na exportação:", err);
+  }
 };
 
 // 2. Export JSON — Armazém
@@ -1705,7 +1719,7 @@ const ivaTotal = allRecipesIva
   position: 'relative',
   margin: '0 auto',       
   left: '0',
-  top: '320px',            // <--- ADICIONA ISTO! 50px para descer um pouco.
+  top: '220px',            // <--- ADICIONA ISTO! 50px para descer um pouco.
                           // Se quiseres que desça MAIS, põe '100px' ou '150px'.
   
   border: '1px solid #333',
@@ -2686,7 +2700,8 @@ let power = val === "Eletricidade" ? 0 : val === "Gás" ? 0 : 0;
       <select 
   className="settings-action" 
   onChange={(e) => {
-    const val = e.target.value;
+    // Dentro da tua função que gere o select
+const val = e.target.value;
     if (val === "recipes") handleExportRecipesJson(); // Era 'pdf'
     else if (val === "warehouse") handleExportWarehouseJson();
     else if (val === "iva") handleExportIvaJson();

@@ -371,7 +371,7 @@ select option { background: #111827; color: white; }
 .settings-action-danger { color: var(--red) !important; }
 
 /* ── MODAL ──────────────────────────────────────────── */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9998; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9998; display: flex; align-items: center; justify-content: center; padding: 0; margin: 0; }
 .modal-card { background: var(--bg-card); border: 1.5px solid var(--gold); border-radius: 18px; padding: 30px 24px; max-width: 360px; width: 100%; display: flex; flex-direction: column; align-items: center; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.7); }
 .modal-title { font-size: 20px; font-weight: 900; color: var(--gold); margin-bottom: 12px; letter-spacing: 1px; }
 .modal-price { font-size: 44px; font-weight: 900; color: white; margin-bottom: 4px; }
@@ -403,20 +403,38 @@ select option { background: #111827; color: white; }
   margin-bottom: 8px;
   display: block;
 }
-/* Garante que o modal sobrepõe tudo e aceita toques */
-.pro-modal-overlay {
+/* O Overlay (fundo escurecido) */
+.modal-overlay {
   position: fixed;
-  top: 0;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  opacity: 0;
+  pointer-events: none; /* Não deixa clicar por baixo enquanto fechado */
+  transition: opacity 0.3s ease;
+  z-index: 9998;
+  padding: 0;
+  margin: 0;
+}
+
+.modal-overlay.show {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* O Painel (o que sobe) */
+.modal-card {
+  position: fixed;
+  bottom: -100%; /* Escondido totalmente lá em baixo */
   left: 0;
   width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.8);
-  z-index: 10000; /* Acima do footer */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  touch-action: auto;      /* Corrige o Bug 1 */
-  pointer-events: all;     /* Corrige o Bug 1 */
+  transition: bottom 0.5s cubic-bezier(0.19, 1, 0.22, 1); /* O controlo da velocidade está aqui! */
+  background: var(--bg-card);
+  border-radius: 20px 20px 0 0;
+  padding: 30px;
+}
+
+.modal-card.open {
+  bottom: 0; /* A posição final de subida */
 }
 
 .pro-modal {
@@ -430,4 +448,20 @@ select option { background: #111827; color: white; }
 /* Desativa o footer quando o modal está aberto */
 body.modal-open .app-footer {
   pointer-events: none;
+}
+
+/* Fix para Botão PNG */
+button img, .btn-png img {
+  width: 100% !important;
+  object-fit: contain !important;
+  border: none !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+button:has(img), .btn-png {
+  border: none !important;
+  padding: 0 !important;
+  background: transparent !important;
+  width: 100% !important;
 }
